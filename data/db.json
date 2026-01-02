@@ -1,0 +1,224 @@
+{
+  "players": [
+    {
+      "id": "player-1",
+      "name": "Javier",
+      "matchesPlayed": 6,
+      "matchesWon": 2,
+      "pointsScored": 12,
+      "pointsAllowed": 13
+    },
+    {
+      "id": "player-2",
+      "name": "Diego",
+      "matchesPlayed": 3,
+      "matchesWon": 1,
+      "pointsScored": 4,
+      "pointsAllowed": 5
+    },
+    {
+      "id": "player-3",
+      "name": "Sebas",
+      "matchesPlayed": 6,
+      "matchesWon": 3,
+      "pointsScored": 13,
+      "pointsAllowed": 12
+    },
+    {
+      "id": "player-4",
+      "name": "Horacio",
+      "matchesPlayed": 1,
+      "matchesWon": 0,
+      "pointsScored": 1,
+      "pointsAllowed": 3
+    },
+    {
+      "id": "player-5",
+      "name": "Ivan",
+      "matchesPlayed": 6,
+      "matchesWon": 4,
+      "pointsScored": 13,
+      "pointsAllowed": 12
+    },
+    {
+      "id": "player-6",
+      "name": "Jorge",
+      "matchesPlayed": 1,
+      "matchesWon": 1,
+      "pointsScored": 3,
+      "pointsAllowed": 1
+    },
+    {
+      "id": "player-7",
+      "name": "Xavi",
+      "matchesPlayed": 3,
+      "matchesWon": 2,
+      "pointsScored": 8,
+      "pointsAllowed": 8
+    },
+    {
+      "id": "player-8",
+      "name": "Fede",
+      "matchesPlayed": 1,
+      "matchesWon": 0,
+      "pointsScored": 1,
+      "pointsAllowed": 3
+    },
+    {
+      "id": "player-9",
+      "name": "David",
+      "matchesPlayed": 0,
+      "matchesWon": 0,
+      "pointsScored": 0,
+      "pointsAllowed": 0
+    },
+    {
+      "id": "player-10",
+      "name": "Victor",
+      "matchesPlayed": 1,
+      "matchesWon": 1,
+      "pointsScored": 3,
+      "pointsAllowed": 1
+    }
+  ],
+  "matches": [
+    {
+      "id": "e13b41d1-eae0-465a-ad42-62e726e0fcd8",
+      "team1": [
+        "player-1",
+        "player-3"
+      ],
+      "team2": [
+        "player-5",
+        "player-7"
+      ],
+      "isFinished": true,
+      "timestamp": 1767285043488,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 2,
+      "score2": 3,
+      "winnerTeam": 2
+    },
+    {
+      "id": "6c78b7b0-e882-4c81-8ab9-f450da594d46",
+      "team1": [
+        "player-5",
+        "player-1"
+      ],
+      "team2": [
+        "player-7",
+        "player-3"
+      ],
+      "isFinished": true,
+      "timestamp": 1767285043488,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 2,
+      "score2": 3,
+      "winnerTeam": 2
+    },
+    {
+      "id": "dfbe7adf-9991-4b5e-b2a4-164bba5db6ef",
+      "team1": [
+        "player-4",
+        "player-8"
+      ],
+      "team2": [
+        "player-10",
+        "player-6"
+      ],
+      "isFinished": true,
+      "timestamp": 1767285043488,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 1,
+      "score2": 3,
+      "winnerTeam": 2
+    },
+    {
+      "id": "8bb3f4d2-20fa-4f27-9863-53df147ccd1a",
+      "team1": [
+        "player-1",
+        "player-3"
+      ],
+      "team2": [
+        "player-5",
+        "player-7"
+      ],
+      "isFinished": true,
+      "timestamp": 1767285043488,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 4,
+      "score2": 2,
+      "winnerTeam": 1
+    },
+    {
+      "id": "3e73380f-2aa0-42fd-9ccc-b2075aa2d47a",
+      "team1": [
+        "player-1",
+        "player-3"
+      ],
+      "team2": [
+        "player-5",
+        "player-2"
+      ],
+      "isFinished": true,
+      "timestamp": 1767372217134,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 1,
+      "score2": 2,
+      "winnerTeam": 2
+    },
+    {
+      "id": "54185163-60bd-4d6c-b908-2fc2cbd52900",
+      "team1": [
+        "player-5",
+        "player-1"
+      ],
+      "team2": [
+        "player-2",
+        "player-3"
+      ],
+      "isFinished": true,
+      "timestamp": 1767372222815,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 2,
+      "score2": 1,
+      "winnerTeam": 1
+    },
+    {
+      "id": "5407f8c2-e516-4182-acaa-ba77a280bf4e",
+      "team1": [
+        "player-5",
+        "player-3"
+      ],
+      "team2": [
+        "player-1",
+        "player-2"
+      ],
+      "isFinished": true,
+      "timestamp": 1767372229390,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 2,
+      "score2": 1,
+      "winnerTeam": 1
+    }
+  ],
+  "sessions": [
+    {
+      "id": "2026-01-01",
+      "playerIds": [],
+      "isClosed": true
+    },
+    {
+      "id": "2026-01-02",
+      "playerIds": [],
+      "isClosed": true
+    }
+  ]
+}

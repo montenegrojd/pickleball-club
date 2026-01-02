@@ -1,0 +1,86 @@
+{
+    "players": [
+        {
+            "id": "player-1",
+            "name": "Javier",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-2",
+            "name": "Diego",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-3",
+            "name": "Sebas",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-4",
+            "name": "Horacio",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-5",
+            "name": "Ivan",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-6",
+            "name": "Jorge",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-7",
+            "name": "Xavi",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-8",
+            "name": "Fede",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-9",
+            "name": "David",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        },
+        {
+            "id": "player-10",
+            "name": "Victor",
+            "matchesPlayed": 0,
+            "matchesWon": 0,
+            "pointsScored": 0,
+            "pointsAllowed": 0
+        }
+    ],
+    "matches": [],
+    "sessions": []
+}
