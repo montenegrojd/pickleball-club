@@ -18,11 +18,18 @@ export async function GET(request: Request) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
-    // Create response with redirect
-    const response = NextResponse.redirect(new URL('/', request.url));
+    // Get the proper host from headers (works with proxies and different hosts)
+    const host = request.headers.get('host') || 'localhost:8080';
+    const protocol = request.headers.get('x-forwarded-proto') || 
+                     (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+    
+    // Create response with redirect using proper host
+    const redirectUrl = `${protocol}://${host}/`;
+    const response = NextResponse.redirect(redirectUrl);
 
     // Set simple auth cookie
-    response.cookies.set('pickleball-auth', 'authenticated', {
+    const cookieValue = process.env.AUTH_COOKIE_VALUE || 'authenticated';
+    response.cookies.set('pickleball-auth', cookieValue, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

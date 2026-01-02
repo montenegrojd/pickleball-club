@@ -19,9 +19,10 @@ export function proxy(request: NextRequest) {
 
     // Check for auth cookie
     const authCookie = request.cookies.get('pickleball-auth')?.value;
+    const expectedValue = process.env.AUTH_COOKIE_VALUE || 'authenticated';
     console.log('[PROXY] Cookie value:', authCookie);
 
-    if (!authCookie || authCookie !== 'authenticated') {
+    if (!authCookie || authCookie !== expectedValue) {
         console.log('[PROXY] No valid cookie, redirecting to /unauthorized');
         return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
