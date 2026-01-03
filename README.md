@@ -1,24 +1,163 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Pickleball Club - Tuesday Night League
+
+A web application for managing pickleball club sessions, matches, and player statistics.
+
+## Features
+
+- 🏓 Session management with player check-in/check-out
+- 🤖 Automated matchmaking with rotation rules
+- 📊 Live scoring and statistics tracking
+- 🏆 Leaderboards (daily and all-time)
+- 🔒 Simple authentication with shared key
+- 💾 Dual storage: JSON file or Firestore
+
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment
+
+Copy the template and set your authentication key:
+
+```bash
+cp env.template .env.local
+# Edit .env.local and set AUTH_SECRET_KEY
+```
+
+### 3. Choose Storage Backend
+
+#### Option A: JSON File Storage (Default)
+
+No additional setup needed. Data is stored in `data/db.json`.
+
+```bash
+# In .env.local
+USE_FIRESTORE=false
+```
+
+#### Option B: Firestore (Recommended for Production)
+
+**For Local Development with Emulator:**
+
+1. Start the Firestore emulator (in one terminal):
+   ```bash
+   npm run emulator
+   ```
+
+2. Configure environment (in `.env.local`):
+   ```bash
+   USE_FIRESTORE=true
+   FIRESTORE_EMULATOR_HOST=localhost:8080
+   GOOGLE_CLOUD_PROJECT=pickleball-dev
+   ```
+
+3. Optional: Migrate existing data from JSON:
+   ```bash
+   npm run migrate
+   ```
+
+4. Start the dev server (in another terminal):
+   ```bash
+   npm run dev
+   ```
+
+5. Access Emulator UI: [http://localhost:4000](http://localhost:4000)
+
+**For Production (Cloud Run):**
+
+Set environment variables in Cloud Run:
+```bash
+USE_FIRESTORE=true
+GOOGLE_CLOUD_PROJECT=your-production-project-id
+```
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Authenticate
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Visit: `http://localhost:3000/auth?key=YOUR_SECRET_KEY`
+
+Replace `YOUR_SECRET_KEY` with the value you set for `AUTH_SECRET_KEY` in `.env.local`.
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run emulator` - Start Firestore emulator
+- `npm run migrate` - Migrate JSON data to Firestore
+
+## Docker Deployment
+
+### Build Image
+
+```bash
+docker build -t pickleballclub:latest .
+```
+
+### Run Container
+
+```bash
+docker run -p 8080:8080 \
+  -e AUTH_SECRET_KEY=your-secret-key \
+  -e USE_FIRESTORE=true \
+  -e GOOGLE_CLOUD_PROJECT=your-project-id \
+  pickleballclub:latest
+```
+
+Access at: [http://localhost:8080](http://localhost:8080)
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   ├── auth/              # Authentication
+│   └── hall-of-fame/      # All-time leaderboard
+├── components/            # React components
+│   ├── Leaderboard.tsx
+│   ├── MatchControl.tsx
+│   ├── MatchHistory.tsx
+│   └── Roster.tsx
+├── lib/
+│   ├── matchmaker.ts      # Automated matchmaking logic
+│   ├── types.ts           # TypeScript interfaces
+│   └── storage/           # Storage adapters
+│       ├── json-adapter.ts      # JSON file storage
+│       ├── firestore-adapter.ts # Firestore storage
+│       └── index.ts             # Storage factory
+└── proxy.ts               # Authentication middleware
+
+data/
+└── db.json                # JSON storage (if USE_FIRESTORE=false)
+
+scripts/
+└── migrate-to-firestore.js # Data migration script
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_SECRET_KEY` | Yes | Shared key for player authentication |
+| `AUTH_COOKIE_VALUE` | No | Custom cookie value (default: "authenticated") |
+| `USE_FIRESTORE` | No | Use Firestore instead of JSON (default: false) |
+| `FIRESTORE_EMULATOR_HOST` | No | Firestore emulator host (e.g., localhost:8080) |
+| `GOOGLE_CLOUD_PROJECT` | If Firestore | GCP project ID |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Local only | Path to service account key |
 
 ## Learn More
 
