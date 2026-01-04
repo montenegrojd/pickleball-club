@@ -5,7 +5,11 @@
  * 
  * Usage:
  *   1. Set environment variables for Firestore (see .env.local)
- *   2. Run: node scripts/migrate-to-firestore.js
+ *   2. Run: node scripts/migrate-to-firestore.js [filename]
+ *   
+ * Examples:
+ *   node scripts/migrate-to-firestore.js              // Uses db.json
+ *   node scripts/migrate-to-firestore.js db-template.json
  */
 
 const { initializeApp } = require('firebase-admin/app');
@@ -13,8 +17,16 @@ const { getFirestore } = require('firebase-admin/firestore');
 const fs = require('fs');
 const path = require('path');
 
-// Read JSON database
-const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+// Read JSON database - use command line arg or default to db.json
+const filename = process.argv[2] || 'db.json';
+const DB_PATH = path.join(process.cwd(), 'data', filename);
+
+if (!fs.existsSync(DB_PATH)) {
+    console.error(`❌ Error: File not found: ${DB_PATH}`);
+    process.exit(1);
+}
+
+console.log(`📁 Reading data from: ${filename}\n`);
 const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
 
 // Initialize Firestore

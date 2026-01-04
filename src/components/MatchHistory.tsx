@@ -140,8 +140,8 @@ export default function MatchHistory({ refreshTrigger, onUpdate }: { refreshTrig
                                     </div>
 
                                     <div className="flex gap-2 w-full justify-center mt-1">
-                                        <button onClick={() => saveEdit(m)} className="flex-1 bg-emerald-600 text-white py-1 rounded text-xs font-bold hover:bg-emerald-700">Save</button>
                                         <button onClick={cancelEdit} className="flex-1 bg-gray-200 text-gray-700 py-1 rounded text-xs font-bold hover:bg-gray-300">Cancel</button>
+                                        <button onClick={() => saveEdit(m)} className="flex-1 bg-emerald-600 text-white py-1 rounded text-xs font-bold hover:bg-emerald-700">Save</button>
                                     </div>
                                 </div>
                             ) : (

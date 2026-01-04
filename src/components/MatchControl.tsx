@@ -209,17 +209,17 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
 
                                 <div className="mt-6 flex gap-2">
                                     <button
+                                        onClick={() => cancelMatch(match)}
+                                        className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 text-sm"
+                                    >
+                                        Cancel Match
+                                    </button>
+                                    <button
                                         onClick={() => finishMatch(match)}
                                         className="flex-1 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 flex items-center justify-center gap-2 text-sm"
                                     >
                                         <CheckCircle className="w-4 h-4" />
                                         Finish Match
-                                    </button>
-                                    <button
-                                        onClick={() => cancelMatch(match)}
-                                        className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 text-sm"
-                                    >
-                                        Cancel Match
                                     </button>
                                 </div>
                             </div>

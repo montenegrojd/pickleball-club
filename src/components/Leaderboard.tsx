@@ -37,24 +37,33 @@ export default function Leaderboard({ refreshTrigger, range = 'today' }: { refre
                             <th className="px-3 py-2">Player</th>
                             <th className="px-3 py-2 text-center">W</th>
                             <th className="px-3 py-2 text-center">L</th>
+                            <th className="px-3 py-2 text-center">W%</th>
                             <th className="px-3 py-2 text-center">Pts</th>
+                            <th className="px-3 py-2 text-center">Pts/G</th>
                             <th className="px-3 py-2 text-center rounded-r-lg">G</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {players.map((p, i) => (
-                            <tr key={p.id} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 font-medium text-gray-400">{i + 1}</td>
-                                <td className="px-3 py-2 font-medium text-gray-900">{p.name}</td>
-                                <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.matchesWon}</td>
-                                <td className="px-3 py-2 text-center text-red-400">{p.matchesPlayed - p.matchesWon}</td>
-                                <td className="px-3 py-2 text-center text-gray-600">{p.pointsScored || 0}</td>
-                                <td className="px-3 py-2 text-center text-gray-400">{p.matchesPlayed}</td>
-                            </tr>
-                        ))}
+                        {players.map((p, i) => {
+                            const winPct = p.matchesPlayed > 0 ? ((p.matchesWon / p.matchesPlayed) * 100).toFixed(0) : '0';
+                            const ptsPerGame = p.matchesPlayed > 0 ? ((p.pointsScored || 0) / p.matchesPlayed).toFixed(1) : '0.0';
+                            
+                            return (
+                                <tr key={p.id} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 font-medium text-gray-400">{i + 1}</td>
+                                    <td className="px-3 py-2 font-medium text-gray-900">{p.name}</td>
+                                    <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.matchesWon}</td>
+                                    <td className="px-3 py-2 text-center text-red-400">{p.matchesPlayed - p.matchesWon}</td>
+                                    <td className="px-3 py-2 text-center font-semibold text-blue-600">{winPct}%</td>
+                                    <td className="px-3 py-2 text-center text-gray-600">{p.pointsScored || 0}</td>
+                                    <td className="px-3 py-2 text-center text-purple-600">{ptsPerGame}</td>
+                                    <td className="px-3 py-2 text-center text-gray-400">{p.matchesPlayed}</td>
+                                </tr>
+                            );
+                        })}
                         {players.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-3 py-4 text-center text-gray-400">No stats yet</td>
+                                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">No stats yet</td>
                             </tr>
                         )}
                     </tbody>

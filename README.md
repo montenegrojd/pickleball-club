@@ -59,7 +59,11 @@ USE_FIRESTORE=false
 
 3. Optional: Migrate existing data from JSON:
    ```bash
+   # Migrate from db.json (default)
    npm run migrate
+   
+   # Or migrate from template data
+   npm run migrate db-template.json
    ```
 
 4. Start the dev server (in another terminal):
@@ -146,6 +150,30 @@ data/
 
 scripts/
 └── migrate-to-firestore.js # Data migration script
+```
+
+## Migrating Data to Production Firestore
+
+To migrate data from JSON to production Firestore (via Cloud Shell):
+
+```bash
+# Clone repo in Cloud Shell
+git clone <your-repo-url>
+cd pickleball-club
+
+# Install dependencies
+npm install
+
+# Set environment and run migration
+export USE_FIRESTORE=true
+export GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project)
+echo "Using project: $GOOGLE_CLOUD_PROJECT"
+
+# Migrate from db.json (default)
+node scripts/migrate-to-firestore.js
+
+# Or migrate from template data
+node scripts/migrate-to-firestore.js db-template.json
 ```
 
 ## Environment Variables
