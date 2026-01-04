@@ -33,8 +33,33 @@ const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
 initializeApp();
 const db = getFirestore();
 
+async function clearDatabase() {
+    console.log('🗑️  Clearing existing data...\n');
+
+    const collections = ['players', 'matches', 'sessions'];
+    
+    for (const collectionName of collections) {
+        const snapshot = await db.collection(collectionName).get();
+        const batch = db.batch();
+        
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        if (snapshot.size > 0) {
+            await batch.commit();
+            console.log(`   Deleted ${snapshot.size} documents from ${collectionName}`);
+        }
+    }
+    
+    console.log('✅ Database cleared\n');
+}
+
 async function migrate() {
     console.log('🚀 Starting migration to Firestore...\n');
+
+    // Clear existing data first
+    await clearDatabase();
 
     // Migrate Players
     console.log(`📊 Migrating ${data.players.length} players...`);
