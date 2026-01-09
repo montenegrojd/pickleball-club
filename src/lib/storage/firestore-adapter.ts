@@ -198,9 +198,11 @@ export class FirestoreAdapter implements StorageAdapter {
     async getMatchesBySessionId(sessionId: string): Promise<Match[]> {
         const snapshot = await this.db.collection('matches')
             .where('sessionId', '==', sessionId)
-            .orderBy('timestamp', 'desc')
             .get();
-        return snapshot.docs.map(doc => doc.data() as Match);
+        
+        // Sort in-memory instead of using orderBy to avoid composite index requirement
+        const matches = snapshot.docs.map(doc => doc.data() as Match);
+        return matches.sort((a, b) => b.timestamp - a.timestamp);
     }
 
     async addMatch(match: Match): Promise<void> {
