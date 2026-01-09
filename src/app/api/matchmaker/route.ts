@@ -7,14 +7,11 @@ export async function GET() {
     const session = await db.getActiveSession();
     if (!session) return NextResponse.json({ error: 'No session' }, { status: 400 });
 
-    const matches = await db.getMatches();
-    // Filter matches to only today's for context? Or all time?
-    // Algorithm usually cares about "just now" (today).
-    const todayStart = new Date().setHours(0, 0, 0, 0);
-    const todaysMatches = matches.filter(m => m.timestamp >= todayStart);
+    // Get all matches for current session
+    const sessionMatches = await db.getMatchesBySessionId(session.id);
 
     // Filter out players currently in an active match
-    const activeMatches = todaysMatches.filter(m => !m.isFinished);
+    const activeMatches = sessionMatches.filter(m => !m.isFinished);
     const busyPlayerIds = new Set<string>();
     activeMatches.forEach(m => {
         m.team1.forEach(id => busyPlayerIds.add(id));
@@ -23,7 +20,7 @@ export async function GET() {
 
     const availablePlayers = session.playerIds.filter(id => !busyPlayerIds.has(id));
 
-    const proposal = Matchmaker.proposeMatch(availablePlayers, todaysMatches);
+    const proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches);
 
     return NextResponse.json(proposal);
 }

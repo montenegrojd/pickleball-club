@@ -14,6 +14,7 @@ export interface PlayerStats extends Player {
 
 export interface Match {
   id: string;
+  sessionId: string; // UUID of the session this match belongs to
   team1: string[]; // Player IDs
   team2: string[]; // Player IDs
   score1?: number;
@@ -26,9 +27,11 @@ export interface Match {
 }
 
 export interface RosterSession {
-  id: string; // usually YYYY-MM-DD
+  id: string; // UUID
+  startDate: string; // ISO date string in EST
   playerIds: string[];
-  isClosed?: boolean;
+  isActive: boolean; // true if this is the current active session
+  isClosed?: boolean; // true if session has been closed
 }
 
 export interface StorageAdapter {
@@ -42,12 +45,15 @@ export interface StorageAdapter {
   getSession(id: string): Promise<RosterSession | null>;
   getSessions(): Promise<RosterSession[]>;
   createSession(): Promise<RosterSession>;
+  startNewSession(): Promise<RosterSession>;
   checkInPlayer(playerId: string): Promise<void>;
   checkOutPlayer(playerId: string): Promise<void>;
   closeSession(sessionId: string): Promise<void>;
+  deleteSession(sessionId: string): Promise<void>;
 
   // Matches
   getMatches(): Promise<Match[]>;
+  getMatchesBySessionId(sessionId: string): Promise<Match[]>;
   addMatch(match: Match): Promise<void>;
   updateMatch(match: Match): Promise<void>;
   deleteMatch(matchId: string): Promise<void>;

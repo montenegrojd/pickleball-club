@@ -52,11 +52,13 @@ export class FirestoreAdapter implements StorageAdapter {
     // --- Roster ---
 
     async getActiveSession(): Promise<RosterSession | null> {
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-        const doc = await this.db.collection('sessions').doc(today).get();
+        const snapshot = await this.db.collection('sessions')
+            .where('isActive', '==', true)
+            .limit(1)
+            .get();
         
-        if (!doc.exists) return null;
-        return doc.data() as RosterSession;
+        if (snapshot.empty) return null;
+        return snapshot.docs[0].data() as RosterSession;
     }
 
     async getSession(id: string): Promise<RosterSession | null> {
@@ -72,53 +74,84 @@ export class FirestoreAdapter implements StorageAdapter {
     }
 
     async createSession(): Promise<RosterSession> {
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-        
-        // Check if session exists
-        const existing = await this.getSession(today);
+        // Check if an active session already exists
+        const existing = await this.getActiveSession();
         if (existing) return existing;
 
+        const sessionId = uuidv4();
+        const startDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+        
         const newSession: RosterSession = {
-            id: today,
+            id: sessionId,
+            startDate,
             playerIds: [],
+            isActive: true,
+            isClosed: false,
         };
 
-        await this.db.collection('sessions').doc(today).set(newSession);
+        await this.db.collection('sessions').doc(sessionId).set(newSession);
+        return newSession;
+    }
+
+    async startNewSession(): Promise<RosterSession> {
+        // Deactivate any currently active session
+        const activeSession = await this.getActiveSession();
+        if (activeSession) {
+            activeSession.isActive = false;
+            await this.db.collection('sessions').doc(activeSession.id).set(activeSession);
+        }
+
+        // Create new session
+        const sessionId = uuidv4();
+        const startDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+        
+        const newSession: RosterSession = {
+            id: sessionId,
+            startDate,
+            playerIds: [],
+            isActive: true,
+            isClosed: false,
+        };
+
+        await this.db.collection('sessions').doc(sessionId).set(newSession);
         return newSession;
     }
 
     async checkInPlayer(playerId: string): Promise<void> {
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-        const sessionRef = this.db.collection('sessions').doc(today);
+        // Get or create active session
+        let session = await this.getActiveSession();
+        if (!session) {
+            session = await this.createSession();
+        }
         
-        await this.db.runTransaction(async (transaction) => {
-            const doc = await transaction.get(sessionRef);
-            
-            let session: RosterSession;
-            if (!doc.exists) {
-                session = { id: today, playerIds: [playerId] };
-            } else {
-                session = doc.data() as RosterSession;
-                if (!session.playerIds.includes(playerId)) {
-                    session.playerIds.push(playerId);
-                }
-            }
-            
-            transaction.set(sessionRef, session);
-        });
-    }
-
-    async checkOutPlayer(playerId: string): Promise<void> {
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-        const sessionRef = this.db.collection('sessions').doc(today);
+        const sessionRef = this.db.collection('sessions').doc(session.id);
         
         await this.db.runTransaction(async (transaction) => {
             const doc = await transaction.get(sessionRef);
             
             if (doc.exists) {
-                const session = doc.data() as RosterSession;
-                session.playerIds = session.playerIds.filter(id => id !== playerId);
-                transaction.set(sessionRef, session);
+                const currentSession = doc.data() as RosterSession;
+                if (!currentSession.playerIds.includes(playerId)) {
+                    currentSession.playerIds.push(playerId);
+                }
+                transaction.set(sessionRef, currentSession);
+            }
+        });
+    }
+
+    async checkOutPlayer(playerId: string): Promise<void> {
+        const session = await this.getActiveSession();
+        if (!session) return;
+        
+        const sessionRef = this.db.collection('sessions').doc(session.id);
+        
+        await this.db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(sessionRef);
+            
+            if (doc.exists) {
+                const currentSession = doc.data() as RosterSession;
+                currentSession.playerIds = currentSession.playerIds.filter(id => id !== playerId);
+                transaction.set(sessionRef, currentSession);
             }
         });
     }
@@ -133,15 +166,40 @@ export class FirestoreAdapter implements StorageAdapter {
                 const session = doc.data() as RosterSession;
                 session.playerIds = [];
                 session.isClosed = true;
+                session.isActive = false;
                 transaction.set(sessionRef, session);
             }
         });
+    }
+
+    async deleteSession(sessionId: string): Promise<void> {
+        // Delete the session document
+        await this.db.collection('sessions').doc(sessionId).delete();
+        
+        // Delete all matches associated with this session
+        const matchesSnapshot = await this.db.collection('matches')
+            .where('sessionId', '==', sessionId)
+            .get();
+        
+        const batch = this.db.batch();
+        matchesSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
     }
 
     // --- Matches ---
 
     async getMatches(): Promise<Match[]> {
         const snapshot = await this.db.collection('matches').orderBy('timestamp', 'desc').get();
+        return snapshot.docs.map(doc => doc.data() as Match);
+    }
+
+    async getMatchesBySessionId(sessionId: string): Promise<Match[]> {
+        const snapshot = await this.db.collection('matches')
+            .where('sessionId', '==', sessionId)
+            .orderBy('timestamp', 'desc')
+            .get();
         return snapshot.docs.map(doc => doc.data() as Match);
     }
 

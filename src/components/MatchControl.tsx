@@ -3,19 +3,22 @@
 
 import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
-import { Play, CheckCircle } from 'lucide-react';
+import { Play, CheckCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 interface MatchControlProps {
     onUpdate: () => void;
     refreshTrigger: number;
+    sessionId?: string;
 }
 
-export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlProps) {
+export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: MatchControlProps) {
     const [activeMatches, setActiveMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(false);
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
     // Local state to track scores for each match. Keyed by valid match ID.
     const [matchesScores, setMatchesScores] = useState<Record<string, { s1: string, s2: string }>>({});
+    const [lastMatchReason, setLastMatchReason] = useState<string | null>(null);
+    const [showReason, setShowReason] = useState(false);
 
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
@@ -53,6 +56,12 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
         const proposal = await res.json();
 
         if (proposal && !proposal.error) {
+            // Store the reason for display
+            if (proposal.reason) {
+                setLastMatchReason(proposal.reason);
+                setShowReason(true);
+            }
+
             // Determine next court number
             // Simple logic: max current court + 1, or just length + 1 if we assume linear
             // Let's use 1-based index from current active count for simplicity, or try to fill gaps? 
@@ -150,6 +159,19 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
         });
     }
 
+    const handleScoreInput = (matchId: string, team: 1 | 2, value: string) => {
+        // Allow empty string or valid numbers
+        if (value === '' || /^\d+$/.test(value)) {
+            setMatchesScores(prev => ({
+                ...prev,
+                [matchId]: {
+                    ...prev[matchId],
+                    [team === 1 ? 's1' : 's2']: value
+                }
+            }));
+        }
+    }
+
     const getNames = (ids: string[]) => {
         return ids.map(id => allPlayers.find(p => p.id === id)?.name || 'Unknown').join(' & ');
     };
@@ -188,7 +210,14 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
                                         <div className="font-bold text-emerald-900 mb-2 truncate px-2">{getNames(match.team1)}</div>
                                         <div className="flex items-center justify-center gap-3">
                                             <button onClick={() => updateScore(match.id, 1, 'dec')} className="p-2 w-10 h-10 bg-gray-200 rounded-full font-bold hover:bg-gray-300 active:scale-95">-</button>
-                                            <span className="text-3xl font-bold w-12 text-center">{scores.s1}</span>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={scores.s1}
+                                                onChange={(e) => handleScoreInput(match.id, 1, e.target.value)}
+                                                onFocus={(e) => e.target.select()}
+                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none"
+                                            />
                                             <button onClick={() => updateScore(match.id, 1, 'inc')} className="p-2 w-10 h-10 bg-emerald-100 text-emerald-800 rounded-full font-bold hover:bg-emerald-200 active:scale-95">+</button>
                                         </div>
                                     </div>
@@ -200,7 +229,14 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
                                         <div className="font-bold text-emerald-900 mb-2 truncate px-2">{getNames(match.team2)}</div>
                                         <div className="flex items-center justify-center gap-3">
                                             <button onClick={() => updateScore(match.id, 2, 'dec')} className="p-2 w-10 h-10 bg-gray-200 rounded-full font-bold hover:bg-gray-300 active:scale-95">-</button>
-                                            <span className="text-3xl font-bold w-12 text-center">{scores.s2}</span>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={scores.s2}
+                                                onChange={(e) => handleScoreInput(match.id, 2, e.target.value)}
+                                                onFocus={(e) => e.target.select()}
+                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none"
+                                            />
                                             <button onClick={() => updateScore(match.id, 2, 'inc')} className="p-2 w-10 h-10 bg-emerald-100 text-emerald-800 rounded-full font-bold hover:bg-emerald-200 active:scale-95">+</button>
                                         </div>
                                     </div>
@@ -225,6 +261,25 @@ export default function MatchControl({ onUpdate, refreshTrigger }: MatchControlP
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Matchmaker Reason Info */}
+            {lastMatchReason && (
+                <div className="mt-4 border-t pt-4">
+                    <button
+                        onClick={() => setShowReason(!showReason)}
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors w-full"
+                    >
+                        <Info className="w-4 h-4" />
+                        <span className="font-medium">Last Match Selection</span>
+                        {showReason ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                    </button>
+                    {showReason && (
+                        <div className="mt-2 text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                            <p className="italic">{lastMatchReason}</p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

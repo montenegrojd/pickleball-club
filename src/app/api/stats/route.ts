@@ -7,25 +7,30 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
     const range = searchParams.get('range') || 'today';
 
-    const [players, matches] = await Promise.all([
-        db.getPlayers(),
-        db.getMatches()
-    ]);
+    const players = await db.getPlayers();
+    let matches: Match[];
 
-    // Filter matches
-    let filteredMatches = matches.filter(m => m.isFinished);
-
-    if (range === 'today') {
-        // Get start of today (local time effectively, but using server time)
-        // Since we store timestamps, we can approximate "today" by 
-        // getting 00:00:00 of the current date.
-        // Note: Ideally we'd use the client's timezone, but server-time is acceptable for now.
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        filteredMatches = filteredMatches.filter(m => m.timestamp >= todayStart.getTime());
+    if (sessionId) {
+        // Get matches for specific session
+        matches = await db.getMatchesBySessionId(sessionId);
+    } else if (range === 'today') {
+        // Get matches for active session
+        const activeSession = await db.getActiveSession();
+        if (activeSession) {
+            matches = await db.getMatchesBySessionId(activeSession.id);
+        } else {
+            matches = [];
+        }
+    } else {
+        // Get all matches
+        matches = await db.getMatches();
     }
+
+    // Filter to finished matches only
+    const filteredMatches = matches.filter(m => m.isFinished);
 
     // Calculate stats
     const statsMap = new Map<string, Player>();

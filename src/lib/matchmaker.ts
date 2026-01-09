@@ -7,98 +7,224 @@ interface MatchProposal {
     reason: string;
 }
 
+interface PlayerStats {
+    playerId: string;
+    gamesPlayed: number;
+    lastPlayedIndex: number; // Lower number = more recent (0 = last game)
+}
+
 export class Matchmaker {
+    /**
+     * Helper: Normalize team pairing to consistent string for comparison
+     * Always sorts player IDs so [p1, p2] and [p2, p1] are treated as same team
+     */
+    private static normalizeTeam(player1: string, player2: string): string {
+        return [player1, player2].sort().join('-');
+    }
+
+    /**
+     * Helper: Get all team pairings that have played together in history
+     */
+    private static getHistoricalTeams(history: Match[]): Set<string> {
+        const teams = new Set<string>();
+        history.forEach(match => {
+            if (match.team1.length === 2) {
+                teams.add(this.normalizeTeam(match.team1[0], match.team1[1]));
+            }
+            if (match.team2.length === 2) {
+                teams.add(this.normalizeTeam(match.team2[0], match.team2[1]));
+            }
+        });
+        return teams;
+    }
+
+    /**
+     * Helper: Calculate player stats for prioritization
+     */
+    private static calculatePlayerStats(
+        availablePlayerIds: string[],
+        history: Match[]
+    ): Map<string, PlayerStats> {
+        const stats = new Map<string, PlayerStats>();
+        
+        // Initialize all available players
+        availablePlayerIds.forEach(id => {
+            stats.set(id, {
+                playerId: id,
+                gamesPlayed: 0,
+                lastPlayedIndex: Infinity, // Never played
+            });
+        });
+
+        // Sort history by timestamp (most recent first)
+        const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
+
+        // Track when each player last played
+        sortedHistory.forEach((match, index) => {
+            const allPlayers = [...match.team1, ...match.team2];
+            allPlayers.forEach(playerId => {
+                const stat = stats.get(playerId);
+                if (stat) {
+                    stat.gamesPlayed++;
+                    // Only set lastPlayedIndex if this is the most recent game for this player
+                    if (stat.lastPlayedIndex === Infinity) {
+                        stat.lastPlayedIndex = index;
+                    }
+                }
+            });
+        });
+
+        return stats;
+    }
+
+    /**
+     * Main matchmaking algorithm
+     */
     static proposeMatch(
         availablePlayerIds: string[],
         history: Match[]
     ): MatchProposal | null {
         if (availablePlayerIds.length < 4) return null;
 
-        // 1. Identify Fatigued Players (played last 2 games consecutively)
         const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
         const lastMatch = sortedHistory[0];
         const secondLastMatch = sortedHistory[1];
 
-        const playedLastGame = new Set<string>();
-        if (lastMatch) {
-            [...lastMatch.team1, ...lastMatch.team2].forEach(p => playedLastGame.add(p));
-        }
-
+        // 1. Identify fatigued players (played last 2 consecutive games)
         const playedTwoInARow = new Set<string>();
         if (lastMatch && secondLastMatch) {
-            const p1 = [...lastMatch.team1, ...lastMatch.team2];
-            const p2 = [...secondLastMatch.team1, ...secondLastMatch.team2];
+            const lastPlayers = [...lastMatch.team1, ...lastMatch.team2];
+            const secondLastPlayers = [...secondLastMatch.team1, ...secondLastMatch.team2];
 
-            p1.forEach(id => {
-                if (p2.includes(id)) playedTwoInARow.add(id);
+            lastPlayers.forEach(id => {
+                if (secondLastPlayers.includes(id)) {
+                    playedTwoInARow.add(id);
+                }
             });
         }
 
-        // 2. Select 4 Players
-        // Prioritize: Not Fatigued > Least Games Played > Random
-        // We don't have "Games Played Today" passed in easily, but we can infer or simpler:
-        // Just prioritize avoiding "Two In A Row".
-
-        let candidates = availablePlayerIds.filter(id => !playedTwoInARow.has(id));
-
-        // Fallback: If not enough non-fatigued players, add back fatigued ones (sorted by something? random for now)
-        if (candidates.length < 4) {
-            const fatigueList = availablePlayerIds.filter(id => playedTwoInARow.has(id));
-            // Shuffle fatigue list to be fair?
-            candidates = [...candidates, ...fatigueList];
-        }
-
-        // Take top 4
-        // Ideally calculate who sat out longest?
-        // For now, simple logic: Just take the first 4 from the candidates logic.
-        // IMPROVEMENT: Sort candidates by "Consecutive matches missed" (Bench time). 
-        // But we need to track that state. 
-        // Let's rely on basic "Available" list order if the partial shuffle happens outside, 
-        // or just assume "availablePlayerIds" is the full roster checked in.
-
-        // Better Selection Logic:
-        // a. Must include those who sat out last game? 
-        // b. Exclude fatigued (2 in a row).
-        // c. Fill remainder with those who played 1 game recently.
-
-        const selectedPlayers = candidates.slice(0, 4);
-
-        if (selectedPlayers.length < 4) return null; // Should be handled above
-
-        // 3. Team Formatting (Winners Split)
-        const p1 = selectedPlayers[0];
-        const p2 = selectedPlayers[1];
-        const p3 = selectedPlayers[2];
-        const p4 = selectedPlayers[3];
-
-        // Check if any pair was a winning team in the last match
-        let team1 = [p1, p2];
-        let team2 = [p3, p4];
-
-        if (lastMatch && lastMatch.winnerTeam) {
-            const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
-            // If the winners are both in our selected group
-            const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
-
-            if (winnersInSelection.length === 2) {
-                // We have both winners playing again. Ensure they are split.
-                // Current Proposal: Team A=[p1,p2], Team B=[p3,p4]
-                // If winners are p1 and p2, we must split them.
-                const [w1, w2] = winnersInSelection;
-
-                // Find non-winners
-                const nonWinners = selectedPlayers.filter(p => !winnersInSelection.includes(p));
-
-                // Split: w1 with nw1, w2 with nw2
-                team1 = [w1, nonWinners[0]];
-                team2 = [w2, nonWinners[1]];
+        // 2. Calculate player stats for smart selection
+        const playerStats = this.calculatePlayerStats(availablePlayerIds, history);
+        
+        // 3. Prioritize players who haven't played recently
+        // Sort by: Not Fatigued > Longest bench time > Fewest games played
+        const sortedPlayers = [...availablePlayerIds].sort((a, b) => {
+            const aFatigued = playedTwoInARow.has(a);
+            const bFatigued = playedTwoInARow.has(b);
+            
+            // Non-fatigued players go first
+            if (aFatigued !== bFatigued) {
+                return aFatigued ? 1 : -1;
             }
-        }
+
+            const aStat = playerStats.get(a)!;
+            const bStat = playerStats.get(b)!;
+
+            // Prioritize players who sat out longer
+            if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
+                return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
+            }
+
+            // Tie-breaker: Fewer games played overall
+            return aStat.gamesPlayed - bStat.gamesPlayed;
+        });
+
+        const selectedPlayers = sortedPlayers.slice(0, 4);
+        if (selectedPlayers.length < 4) return null;
+
+        // 4. Get historical team pairings to avoid repeats
+        const historicalTeams = this.getHistoricalTeams(history);
+
+        // 5. Generate all possible team combinations from selected 4 players
+        const [p1, p2, p3, p4] = selectedPlayers;
+        
+        // All possible team configurations:
+        // Config 1: [p1,p2] vs [p3,p4]
+        // Config 2: [p1,p3] vs [p2,p4]
+        // Config 3: [p1,p4] vs [p2,p3]
+        const configs = [
+            { team1: [p1, p2], team2: [p3, p4] },
+            { team1: [p1, p3], team2: [p2, p4] },
+            { team1: [p1, p4], team2: [p2, p3] },
+        ];
+
+        // 6. Score each configuration and select the best
+        let bestConfig = configs[0];
+        let bestScore = -Infinity;
+
+        configs.forEach(config => {
+            let score = 0;
+
+            const team1Key = this.normalizeTeam(config.team1[0], config.team1[1]);
+            const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
+
+            // Heavily penalize if teams have played together before
+            if (historicalTeams.has(team1Key)) score -= 100;
+            if (historicalTeams.has(team2Key)) score -= 100;
+
+            // Apply winner-splitting rule: if last match had winners, they should be split
+            if (lastMatch && lastMatch.winnerTeam) {
+                const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+                const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
+
+                if (winnersInSelection.length === 2) {
+                    const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
+                    
+                    // Heavily reward splitting the winners
+                    if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
+                        score += 200; // Winners are split
+                    } else {
+                        score -= 300; // Winners are together again (bad!)
+                    }
+                }
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestConfig = config;
+            }
+        });
 
         return {
-            team1,
-            team2,
-            reason: "Generated based on availability and rotation rules."
+            team1: bestConfig.team1,
+            team2: bestConfig.team2,
+            reason: this.generateReason(bestConfig, historicalTeams, playedTwoInARow)
         };
+    }
+
+    /**
+     * Generate human-readable reason for the match proposal
+     */
+    private static generateReason(
+        config: { team1: string[], team2: string[] },
+        historicalTeams: Set<string>,
+        fatigued: Set<string>
+    ): string {
+        const reasons: string[] = [];
+
+        const team1Key = this.normalizeTeam(config.team1[0], config.team1[1]);
+        const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
+
+        const team1IsNew = !historicalTeams.has(team1Key);
+        const team2IsNew = !historicalTeams.has(team2Key);
+
+        if (team1IsNew && team2IsNew) {
+            reasons.push("Fresh team pairings");
+        } else if (team1IsNew || team2IsNew) {
+            reasons.push("One new team pairing");
+        }
+
+        const allPlayers = [...config.team1, ...config.team2];
+        const fatigueCount = allPlayers.filter(p => fatigued.has(p)).length;
+        
+        if (fatigueCount === 0) {
+            reasons.push("all players well-rested");
+        } else if (fatigueCount < 4) {
+            reasons.push(`${4 - fatigueCount} rested players`);
+        }
+
+        return reasons.length > 0 
+            ? reasons.join(", ") + "."
+            : "Best available match based on rotation rules.";
     }
 }

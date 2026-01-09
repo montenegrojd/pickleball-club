@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
 import { Clock, Edit2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 
-export default function MatchHistory({ refreshTrigger, onUpdate }: { refreshTrigger: number, onUpdate: () => void }) {
+export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { refreshTrigger: number, onUpdate: () => void, sessionId?: string }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [players, setPlayers] = useState<Player[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -13,15 +13,19 @@ export default function MatchHistory({ refreshTrigger, onUpdate }: { refreshTrig
     const [isExpanded, setIsExpanded] = useState(true);
 
     useEffect(() => {
+        const matchesUrl = sessionId 
+            ? `/api/matches?sessionId=${sessionId}`
+            : '/api/matches?range=today';
+        
         Promise.all([
-            fetch('/api/matches?range=today').then(res => res.json()),
+            fetch(matchesUrl).then(res => res.json()),
             fetch('/api/players').then(res => res.json())
         ]).then(([mData, pData]) => {
             // Sort by newest first (filtering handled server-side)
             setMatches((mData as Match[]).sort((a, b) => b.timestamp - a.timestamp));
             setPlayers(pData);
         });
-    }, [refreshTrigger]);
+    }, [refreshTrigger, sessionId]);
 
     const getNames = (ids: string[]) => {
         return ids.map(id => players.find(p => p.id === id)?.name || 'Unknown').join(' & ');
@@ -78,7 +82,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate }: { refreshTrig
             >
                 <div className="flex items-center gap-2 text-blue-600">
                     <Clock className="w-5 h-5" />
-                    <h2 className="font-bold text-lg text-gray-800">Today's Match History</h2>
+                    <h2 className="font-bold text-lg text-gray-800">Match History</h2>
                 </div>
                 <button className="text-gray-400 hover:text-gray-600 md:hidden">
                     {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}

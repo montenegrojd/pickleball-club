@@ -75,8 +75,7 @@ export class JsonFileAdapter implements StorageAdapter {
 
     async getActiveSession(): Promise<RosterSession | null> {
         const db = await this.readDB();
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
-        return db.sessions.find(s => s.id === today) || null;
+        return db.sessions.find(s => s.isActive === true) || null;
     }
 
     async getSession(id: string): Promise<RosterSession | null> {
@@ -91,15 +90,45 @@ export class JsonFileAdapter implements StorageAdapter {
 
     async createSession(): Promise<RosterSession> {
         const db = await this.readDB();
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
 
-        // Return existing if found
-        const existing = db.sessions.find(s => s.id === today);
+        // Return existing active session if found
+        const existing = db.sessions.find(s => s.isActive === true);
         if (existing) return existing;
 
+        const sessionId = uuidv4();
+        const startDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+
         const newSession: RosterSession = {
-            id: today,
+            id: sessionId,
+            startDate,
             playerIds: [],
+            isActive: true,
+            isClosed: false,
+        };
+        db.sessions.push(newSession);
+        await this.writeDB(db);
+        return newSession;
+    }
+
+    async startNewSession(): Promise<RosterSession> {
+        const db = await this.readDB();
+
+        // Deactivate any currently active session
+        const activeSession = db.sessions.find(s => s.isActive === true);
+        if (activeSession) {
+            activeSession.isActive = false;
+        }
+
+        // Create new session
+        const sessionId = uuidv4();
+        const startDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+
+        const newSession: RosterSession = {
+            id: sessionId,
+            startDate,
+            playerIds: [],
+            isActive: true,
+            isClosed: false,
         };
         db.sessions.push(newSession);
         await this.writeDB(db);
@@ -108,11 +137,19 @@ export class JsonFileAdapter implements StorageAdapter {
 
     async checkInPlayer(playerId: string): Promise<void> {
         const db = await this.readDB();
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
-        let session = db.sessions.find(s => s.id === today);
+        let session = db.sessions.find(s => s.isActive === true);
 
         if (!session) {
-            session = { id: today, playerIds: [] };
+            // Create new session if none exists
+            const sessionId = uuidv4();
+            const startDate = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+            session = {
+                id: sessionId,
+                startDate,
+                playerIds: [],
+                isActive: true,
+                isClosed: false,
+            };
             db.sessions.push(session);
         }
 
@@ -124,8 +161,7 @@ export class JsonFileAdapter implements StorageAdapter {
 
     async checkOutPlayer(playerId: string): Promise<void> {
         const db = await this.readDB();
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
-        const session = db.sessions.find(s => s.id === today);
+        const session = db.sessions.find(s => s.isActive === true);
 
         if (session) {
             session.playerIds = session.playerIds.filter(id => id !== playerId);
@@ -139,8 +175,21 @@ export class JsonFileAdapter implements StorageAdapter {
         if (session) {
             session.playerIds = [];
             session.isClosed = true;
+            session.isActive = false;
             await this.writeDB(db);
         }
+    }
+
+    async deleteSession(sessionId: string): Promise<void> {
+        const db = await this.readDB();
+        
+        // Delete the session
+        db.sessions = db.sessions.filter(s => s.id !== sessionId);
+        
+        // Delete all matches associated with this session
+        db.matches = db.matches.filter(m => m.sessionId !== sessionId);
+        
+        await this.writeDB(db);
     }
 
     // --- Matches ---
@@ -148,6 +197,11 @@ export class JsonFileAdapter implements StorageAdapter {
     async getMatches(): Promise<Match[]> {
         const db = await this.readDB();
         return db.matches;
+    }
+
+    async getMatchesBySessionId(sessionId: string): Promise<Match[]> {
+        const db = await this.readDB();
+        return db.matches.filter(m => m.sessionId === sessionId);
     }
 
     async addMatch(match: Match): Promise<void> {

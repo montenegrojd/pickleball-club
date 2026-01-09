@@ -16,14 +16,18 @@ export default function MatchmakingRules() {
                         </div>
                         <div className="flex gap-2">
                             <span className="font-semibold min-w-[20px] text-gray-500">2.</span>
-                            <span><strong className="text-gray-800">Fair Rotation:</strong> Players who sat out the longest are selected first</span>
+                            <span><strong className="text-gray-800">Fair Rotation:</strong> Players who sat out the longest are selected first, then those with fewest games played</span>
                         </div>
                         <div className="flex gap-2">
                             <span className="font-semibold min-w-[20px] text-gray-500">3.</span>
-                            <span><strong className="text-gray-800">Winners Split:</strong> If both winners from the last match are playing again, they'll be on opposite teams</span>
+                            <span><strong className="text-gray-800">Fresh Pairings:</strong> Team combinations that haven't played together are strongly preferred to maximize variety</span>
                         </div>
                         <div className="flex gap-2">
                             <span className="font-semibold min-w-[20px] text-gray-500">4.</span>
+                            <span><strong className="text-gray-800">Winners Split:</strong> If both winners from the last match are playing again, they'll be on opposite teams</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <span className="font-semibold min-w-[20px] text-gray-500">5.</span>
                             <span><strong className="text-gray-800">Multi-Court:</strong> Players currently in an active match won't be selected for new matches</span>
                         </div>
                     </div>

@@ -6,36 +6,53 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
     const range = searchParams.get('range');
 
-    let matches = await db.getMatches();
+    let matches: Match[];
+    
+    if (sessionId) {
+        // Get matches for specific session
+        matches = await db.getMatchesBySessionId(sessionId);
+    } else {
+        // Get all matches or filter by range
+        matches = await db.getMatches();
+        
+        // Filter by active session if range is 'today'
+        if (range === 'today') {
+            const activeSession = await db.getActiveSession();
+            if (activeSession) {
+                matches = matches.filter(m => m.sessionId === activeSession.id);
+            } else {
+                matches = [];
+            }
+        }
+    }
+
     const sessions = await db.getSessions();
     const closedSessionIds = new Set(sessions.filter(s => s.isClosed).map(s => s.id));
 
-    // Filter by date range if requested
-    if (range === 'today') {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        matches = matches.filter(m => m.timestamp >= todayStart.getTime());
-    }
-
-    const enrichedMatches = matches.map(m => {
-        const matchDate = new Date(m.timestamp).toLocaleDateString('en-CA');
-        return {
-            ...m,
-            isLocked: closedSessionIds.has(matchDate)
-        };
-    });
+    const enrichedMatches = matches.map(m => ({
+        ...m,
+        isLocked: closedSessionIds.has(m.sessionId)
+    }));
 
     return NextResponse.json(enrichedMatches);
 }
 
 export async function POST(request: Request) {
     const body = await request.json();
-    // We expect a partial match object (team1, team2) or a full result
-    // If it's a new match being started:
+    
+    // Get active session
+    const activeSession = await db.getActiveSession();
+    if (!activeSession) {
+        return NextResponse.json({ error: "No active session. Please start a session first." }, { status: 400 });
+    }
+    
+    // Create new match with sessionId
     const newMatch: Match = {
         id: uuidv4(),
+        sessionId: activeSession.id,
         team1: body.team1,
         team2: body.team2,
         isFinished: false,
@@ -49,16 +66,10 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     const body = await request.json();
-    // If match finished, update player stats?
-    // Case A: Match WAS finished, and is STILL finished (Editing a score)
-    // We need to revert the OLD stats first, then apply NEW stats.
-    // Check for "Closed Session" lock
-    if (body.timestamp) {
-        // Find session for this match
-        // Assuming session ID is YYYY-MM-DD
-        const matchDate = new Date(body.timestamp).toLocaleDateString('en-CA');
-
-        const session = await db.getSession(matchDate);
+    
+    // Check if match belongs to a closed session
+    if (body.sessionId) {
+        const session = await db.getSession(body.sessionId);
         if (session && session.isClosed) {
             return NextResponse.json({ error: "Session is closed. Scores are locked." }, { status: 403 });
         }
