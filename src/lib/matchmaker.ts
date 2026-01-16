@@ -5,6 +5,8 @@ interface MatchProposal {
     team1: string[];
     team2: string[];
     reason: string;
+    mainReason: string;
+    scoringBreakdown: string[];
 }
 
 interface PlayerStats {
@@ -82,7 +84,8 @@ export class Matchmaker {
      */
     static proposeMatch(
         availablePlayerIds: string[],
-        history: Match[]
+        history: Match[],
+        playerNames?: Map<string, string>
     ): MatchProposal | null {
         if (availablePlayerIds.length < 4) return null;
 
@@ -149,8 +152,7 @@ export class Matchmaker {
         ];
 
         // 6. Score each configuration and select the best
-        let bestConfig = configs[0];
-        let bestScore = -Infinity;
+        const scoredConfigs: Array<{ config: { team1: string[], team2: string[] }, score: number }> = [];
 
         configs.forEach(config => {
             let score = 0;
@@ -179,16 +181,21 @@ export class Matchmaker {
                 }
             }
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestConfig = config;
-            }
+            scoredConfigs.push({ config, score });
         });
+
+        // Sort by score (highest first) and select the best
+        scoredConfigs.sort((a, b) => b.score - a.score);
+        const bestConfig = scoredConfigs[0].config;
+
+        const reasonData = this.generateReason(scoredConfigs, historicalTeams, playedTwoInARow, playerNames);
 
         return {
             team1: bestConfig.team1,
             team2: bestConfig.team2,
-            reason: this.generateReason(bestConfig, historicalTeams, playedTwoInARow)
+            reason: reasonData.combined,
+            mainReason: reasonData.main,
+            scoringBreakdown: reasonData.breakdown
         };
     }
 
@@ -196,14 +203,16 @@ export class Matchmaker {
      * Generate human-readable reason for the match proposal
      */
     private static generateReason(
-        config: { team1: string[], team2: string[] },
+        scoredConfigs: Array<{ config: { team1: string[], team2: string[] }, score: number }>,
         historicalTeams: Set<string>,
-        fatigued: Set<string>
-    ): string {
+        fatigued: Set<string>,
+        playerNames?: Map<string, string>
+    ): { main: string; breakdown: string[]; combined: string } {
         const reasons: string[] = [];
+        const bestConfig = scoredConfigs[0].config;
 
-        const team1Key = this.normalizeTeam(config.team1[0], config.team1[1]);
-        const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
+        const team1Key = this.normalizeTeam(bestConfig.team1[0], bestConfig.team1[1]);
+        const team2Key = this.normalizeTeam(bestConfig.team2[0], bestConfig.team2[1]);
 
         const team1IsNew = !historicalTeams.has(team1Key);
         const team2IsNew = !historicalTeams.has(team2Key);
@@ -214,7 +223,7 @@ export class Matchmaker {
             reasons.push("One new team pairing");
         }
 
-        const allPlayers = [...config.team1, ...config.team2];
+        const allPlayers = [...bestConfig.team1, ...bestConfig.team2];
         const fatigueCount = allPlayers.filter(p => fatigued.has(p)).length;
         
         if (fatigueCount === 0) {
@@ -223,8 +232,24 @@ export class Matchmaker {
             reasons.push(`${4 - fatigueCount} rested players`);
         }
 
-        return reasons.length > 0 
+        const mainReason = reasons.length > 0 
             ? reasons.join(", ") + "."
             : "Best available match based on rotation rules.";
+
+        // Helper to get display name
+        const getName = (id: string) => playerNames?.get(id) || id;
+
+        // Add scoring breakdown as separate array
+        const breakdown = scoredConfigs.map((sc, idx) => {
+            const { config, score } = sc;
+            const team1Display = config.team1.map(getName).join(",");
+            const team2Display = config.team2.map(getName).join(",");
+            return `[${team1Display}] vs [${team2Display}]: ${score > 0 ? '+' : ''}${score}`;
+        });
+
+        const combined = `${mainReason} Scores: ${breakdown.join(" | ")}`;
+
+        return { main: mainReason, breakdown, combined };
     }
 }
+

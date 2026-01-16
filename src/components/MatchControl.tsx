@@ -17,7 +17,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
     // Local state to track scores for each match. Keyed by valid match ID.
     const [matchesScores, setMatchesScores] = useState<Record<string, { s1: string, s2: string }>>({});
-    const [lastMatchReason, setLastMatchReason] = useState<string | null>(null);
+    const [lastMatchReason, setLastMatchReason] = useState<{ main: string; breakdown: string[] } | null>(null);
     const [showReason, setShowReason] = useState(false);
 
     const fetchData = async () => {
@@ -57,8 +57,11 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
 
         if (proposal && !proposal.error) {
             // Store the reason for display
-            if (proposal.reason) {
-                setLastMatchReason(proposal.reason);
+            if (proposal.mainReason && proposal.scoringBreakdown) {
+                setLastMatchReason({
+                    main: proposal.mainReason,
+                    breakdown: proposal.scoringBreakdown
+                });
                 setShowReason(true);
             }
 
@@ -277,7 +280,14 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     </button>
                     {showReason && (
                         <div className="mt-2 text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                            <p className="italic">{lastMatchReason}</p>
+                            <p className="font-medium mb-2">{lastMatchReason.main}</p>
+                            <div className="space-y-1 font-mono text-xs">
+                                {lastMatchReason.breakdown.map((line, i) => (
+                                    <p key={i} className={i === 0 ? 'font-bold text-emerald-700' : 'text-gray-500'}>
+                                        {line}
+                                    </p>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

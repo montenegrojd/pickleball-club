@@ -65,7 +65,18 @@ export async function GET(request: Request) {
         m.team2.forEach(id => updateStats(id, !win1, s2, s1));
     });
 
-    const results = Array.from(statsMap.values());
+    let results = Array.from(statsMap.values());
+
+    // Filter by session playerIds if sessionId is provided
+    if (sessionId) {
+        const session = await db.getSession(sessionId);
+        if (session) {
+            results = results.filter(p => session.playerIds.includes(p.id));
+        } else {
+            // Session not found, return empty array
+            results = [];
+        }
+    }
 
     return NextResponse.json(results);
 }

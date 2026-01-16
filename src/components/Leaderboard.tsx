@@ -67,7 +67,7 @@ export default function Leaderboard({ refreshTrigger, range = 'today', sessionId
                         })}
                         {players.length === 0 && (
                             <tr>
-                                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">No stats yet</td>
+                                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">No players checked in</td>
                             </tr>
                         )}
                     </tbody>

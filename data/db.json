@@ -3,50 +3,50 @@
     {
       "id": "player-1",
       "name": "Javier",
-      "matchesPlayed": 12,
-      "matchesWon": 5,
-      "pointsScored": 84,
-      "pointsAllowed": 85
+      "matchesPlayed": 18,
+      "matchesWon": 6,
+      "pointsScored": 121,
+      "pointsAllowed": 141
     },
     {
       "id": "player-2",
       "name": "Diego",
-      "matchesPlayed": 10,
-      "matchesWon": 7,
-      "pointsScored": 77,
-      "pointsAllowed": 63
+      "matchesPlayed": 16,
+      "matchesWon": 11,
+      "pointsScored": 127,
+      "pointsAllowed": 107
     },
     {
       "id": "player-3",
       "name": "Sebas",
-      "matchesPlayed": 13,
-      "matchesWon": 6,
-      "pointsScored": 79,
-      "pointsAllowed": 96
+      "matchesPlayed": 17,
+      "matchesWon": 8,
+      "pointsScored": 112,
+      "pointsAllowed": 132
     },
     {
       "id": "player-4",
       "name": "Horacio",
-      "matchesPlayed": 12,
-      "matchesWon": 7,
-      "pointsScored": 95,
-      "pointsAllowed": 75
+      "matchesPlayed": 18,
+      "matchesWon": 11,
+      "pointsScored": 147,
+      "pointsAllowed": 117
     },
     {
       "id": "player-5",
       "name": "Ivan",
-      "matchesPlayed": 10,
-      "matchesWon": 7,
-      "pointsScored": 77,
-      "pointsAllowed": 63
+      "matchesPlayed": 16,
+      "matchesWon": 9,
+      "pointsScored": 120,
+      "pointsAllowed": 113
     },
     {
       "id": "player-6",
       "name": "Jorge",
-      "matchesPlayed": 9,
-      "matchesWon": 2,
-      "pointsScored": 55,
-      "pointsAllowed": 74
+      "matchesPlayed": 13,
+      "matchesWon": 5,
+      "pointsScored": 96,
+      "pointsAllowed": 102
     },
     {
       "id": "player-7",
@@ -423,6 +423,173 @@
       "score1": 11,
       "score2": 6,
       "winnerTeam": 1
+    },
+    {
+      "id": "e7dc8f83-4483-4591-b9d8-5294180f5fa3",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-2",
+        "player-1"
+      ],
+      "team2": [
+        "player-5",
+        "player-4"
+      ],
+      "isFinished": true,
+      "timestamp": 1768584034723,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 4,
+      "score2": 10,
+      "winnerTeam": 2
+    },
+    {
+      "id": "b6e584a2-bf92-489b-a4dc-a3b826998a54",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-2",
+        "player-5"
+      ],
+      "team2": [
+        "player-1",
+        "player-4"
+      ],
+      "isFinished": true,
+      "timestamp": 1768586041183,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 2,
+      "score2": 7,
+      "winnerTeam": 2
+    },
+    {
+      "id": "ed6889e6-6b4a-46be-a9e9-2f56384e63d8",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-3",
+        "player-6"
+      ],
+      "team2": [
+        "player-1",
+        "player-5"
+      ],
+      "isFinished": true,
+      "timestamp": 1768588767979,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 11,
+      "score2": 6,
+      "winnerTeam": 1
+    },
+    {
+      "id": "a645aa2d-7cfd-4d4b-9835-93539f4a7109",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-4",
+        "player-3"
+      ],
+      "team2": [
+        "player-2",
+        "player-6"
+      ],
+      "isFinished": true,
+      "timestamp": 1768588840492,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 5,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "id": "6c3858e1-6937-4f37-b670-42e16e2ff9e9",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-1",
+        "player-5"
+      ],
+      "team2": [
+        "player-4",
+        "player-2"
+      ],
+      "isFinished": true,
+      "timestamp": 1768588905524,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "id": "2ef77ff7-95d5-437f-b03e-f3302ffd70e3",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-3",
+        "player-1"
+      ],
+      "team2": [
+        "player-6",
+        "player-5"
+      ],
+      "isFinished": true,
+      "timestamp": 1768588997494,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "id": "b81855b5-03e6-435c-854c-c7f1cd36c37e",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-2",
+        "player-3"
+      ],
+      "isFinished": true,
+      "timestamp": 1768589854884,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 8,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "id": "41dfc1ae-f5ca-453f-aaa9-a517ac88cd61",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-1",
+        "player-5"
+      ],
+      "team2": [
+        "player-4",
+        "player-2"
+      ],
+      "isFinished": true,
+      "timestamp": 1768590501132,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 8,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "id": "fbfa05fd-05d0-4ae2-9a58-55de0537827d",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-3",
+        "player-5"
+      ],
+      "team2": [
+        "player-6",
+        "player-1"
+      ],
+      "isFinished": false,
+      "timestamp": 1768590604683,
+      "courtNumber": 1
     }
   ],
   "sessions": [
@@ -439,6 +606,20 @@
       "playerIds": [],
       "isActive": false,
       "isClosed": true
+    },
+    {
+      "id": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "startDate": "1/16/2026, 12:20:20 PM",
+      "playerIds": [
+        "player-1",
+        "player-5",
+        "player-4",
+        "player-3",
+        "player-6",
+        "player-2"
+      ],
+      "isActive": true,
+      "isClosed": false
     }
   ]
 }

@@ -74,6 +74,8 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
         onUpdate(); // Trigger refresh of Leaderboard and this list (via parent state)
     };
 
+    const finishedMatches = matches.filter(m => m.isFinished);
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
             <div
@@ -82,7 +84,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
             >
                 <div className="flex items-center gap-2 text-blue-600">
                     <Clock className="w-5 h-5" />
-                    <h2 className="font-bold text-lg text-gray-800">Match History</h2>
+                    <h2 className="font-bold text-lg text-gray-800">Match History ({finishedMatches.length})</h2>
                 </div>
                 <button className="text-gray-400 hover:text-gray-600 md:hidden">
                     {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -91,7 +93,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
 
             {isExpanded && (
                 <div className="space-y-3">
-                    {matches.filter(m => m.isFinished).map(m => (
+                    {finishedMatches.map(m => (
                         <div key={m.id} className="flex flex-col md:flex-row items-center justify-between p-3 bg-gray-50 rounded-lg text-sm border border-gray-100">
                             <div className="flex-1 flex justify-end gap-2 text-right">
                                 <span className={m.winnerTeam === 1 ? "font-bold text-gray-900" : "text-gray-500"}>
@@ -166,7 +168,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
                             </div>
                         </div>
                     ))}
-                    {matches.filter(m => m.isFinished).length === 0 && (
+                    {finishedMatches.length === 0 && (
                         <p className="text-center text-gray-400 py-4">No finished matches yet.</p>
                     )}
                 </div>

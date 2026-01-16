@@ -10,6 +10,10 @@ export async function GET() {
     // Get all matches for current session
     const sessionMatches = await db.getMatchesBySessionId(session.id);
 
+    // Get all players to create name map
+    const allPlayers = await db.getPlayers();
+    const playerNames = new Map(allPlayers.map(p => [p.id, p.name]));
+
     // Filter out players currently in an active match
     const activeMatches = sessionMatches.filter(m => !m.isFinished);
     const busyPlayerIds = new Set<string>();
@@ -20,7 +24,7 @@ export async function GET() {
 
     const availablePlayers = session.playerIds.filter(id => !busyPlayerIds.has(id));
 
-    const proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches);
+    const proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches, playerNames);
 
     return NextResponse.json(proposal);
 }
