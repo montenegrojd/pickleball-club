@@ -81,11 +81,13 @@ export class Matchmaker {
 
     /**
      * Main matchmaking algorithm
+     * @param mode - 'rotation' for balanced play, 'strict-partners' to avoid partner repetition
      */
     static proposeMatch(
         availablePlayerIds: string[],
         history: Match[],
-        playerNames?: Map<string, string>
+        playerNames?: Map<string, string>,
+        mode: 'rotation' | 'strict-partners' = 'rotation'
     ): MatchProposal | null {
         if (availablePlayerIds.length < 4) return null;
 
@@ -160,11 +162,19 @@ export class Matchmaker {
             const team1Key = this.normalizeTeam(config.team1[0], config.team1[1]);
             const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
 
-            // Heavily penalize if teams have played together before
-            if (historicalTeams.has(team1Key)) score -= 100;
-            if (historicalTeams.has(team2Key)) score -= 100;
+            if (mode === 'strict-partners') {
+                // STRICT MODE: Apply heavy penalty for any repeated partnership
+                if (historicalTeams.has(team1Key)) score -= 1000;
+                if (historicalTeams.has(team2Key)) score -= 1000;
+            } else {
+                // ROTATION MODE: Current balanced approach
+                // Heavily penalize if teams have played together before
+                if (historicalTeams.has(team1Key)) score -= 100;
+                if (historicalTeams.has(team2Key)) score -= 100;
+            }
 
             // Apply winner-splitting rule: if last match had winners, they should be split
+            // (Applied in both modes, though strict mode prioritizes fresh partnerships)
             if (lastMatch && lastMatch.winnerTeam) {
                 const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
                 const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
@@ -188,7 +198,7 @@ export class Matchmaker {
         scoredConfigs.sort((a, b) => b.score - a.score);
         const bestConfig = scoredConfigs[0].config;
 
-        const reasonData = this.generateReason(scoredConfigs, historicalTeams, playedTwoInARow, playerNames);
+        const reasonData = this.generateReason(scoredConfigs, historicalTeams, playedTwoInARow, playerNames, mode);
 
         return {
             team1: bestConfig.team1,
@@ -206,7 +216,8 @@ export class Matchmaker {
         scoredConfigs: Array<{ config: { team1: string[], team2: string[] }, score: number }>,
         historicalTeams: Set<string>,
         fatigued: Set<string>,
-        playerNames?: Map<string, string>
+        playerNames?: Map<string, string>,
+        mode: 'rotation' | 'strict-partners' = 'rotation'
     ): { main: string; breakdown: string[]; combined: string } {
         const reasons: string[] = [];
         const bestConfig = scoredConfigs[0].config;
@@ -218,9 +229,11 @@ export class Matchmaker {
         const team2IsNew = !historicalTeams.has(team2Key);
 
         if (team1IsNew && team2IsNew) {
-            reasons.push("Fresh team pairings");
+            reasons.push(mode === 'strict-partners' ? "Fresh partnerships" : "Fresh team pairings");
         } else if (team1IsNew || team2IsNew) {
-            reasons.push("One new team pairing");
+            reasons.push(mode === 'strict-partners' ? "One new partnership" : "One new team pairing");
+        } else if (mode === 'strict-partners') {
+            reasons.push("Best partnership variety available");
         }
 
         const allPlayers = [...bestConfig.team1, ...bestConfig.team2];
@@ -250,6 +263,81 @@ export class Matchmaker {
         const combined = `${mainReason} Scores: ${breakdown.join(" | ")}`;
 
         return { main: mainReason, breakdown, combined };
+    }
+
+    /**
+     * Playoff/Tournament matchmaking algorithm
+     * Seeds players by performance (points, wins) and creates competitive matchups:
+     * #1 vs #4 and #2 vs #3
+     */
+    static proposePlayoffMatch(
+        availablePlayerIds: string[],
+        history: Match[],
+        playerStats: Player[],
+        playerNames?: Map<string, string>
+    ): MatchProposal | null {
+        if (availablePlayerIds.length < 4) return null;
+
+        // Filter stats to only available players and sort by ranking
+        const availableStats = playerStats
+            .filter(p => availablePlayerIds.includes(p.id))
+            .sort((a, b) => {
+                // Primary: Win percentage (for players with matches)
+                const aWinPct = a.matchesPlayed > 0 ? a.matchesWon / a.matchesPlayed : 0;
+                const bWinPct = b.matchesPlayed > 0 ? b.matchesWon / b.matchesPlayed : 0;
+                if (aWinPct !== bWinPct) return bWinPct - aWinPct;
+
+                // Secondary: Total wins
+                if (a.matchesWon !== b.matchesWon) return b.matchesWon - a.matchesWon;
+
+                // Tertiary: Points scored
+                const aPoints = a.pointsScored || 0;
+                const bPoints = b.pointsScored || 0;
+                if (aPoints !== bPoints) return bPoints - aPoints;
+
+                // Quaternary: Points per game
+                const aPPG = a.matchesPlayed > 0 ? aPoints / a.matchesPlayed : 0;
+                const bPPG = b.matchesPlayed > 0 ? bPoints / b.matchesPlayed : 0;
+                return bPPG - aPPG;
+            });
+
+        if (availableStats.length < 4) return null;
+
+        // Seed top 4 players
+        const seed1 = availableStats[0].id;
+        const seed2 = availableStats[1].id;
+        const seed3 = availableStats[2].id;
+        const seed4 = availableStats[3].id;
+
+        // Create matchup: #1 vs #4, #2 vs #3
+        const team1 = [seed1, seed4];
+        const team2 = [seed2, seed3];
+
+        // Generate reason
+        const getName = (id: string) => playerNames?.get(id) || id;
+        const getRank = (id: string) => {
+            const idx = availableStats.findIndex(s => s.id === id);
+            return `#${idx + 1}`;
+        };
+
+        const team1Display = team1.map(id => `${getName(id)} ${getRank(id)}`).join(" & ");
+        const team2Display = team2.map(id => `${getName(id)} ${getRank(id)}`).join(" & ");
+
+        const mainReason = "Playoff Match: Top seeds face off";
+        const breakdown = [
+            `Team 1: ${team1Display}`,
+            `Team 2: ${team2Display}`,
+            `Seeding: #1 & #4 vs #2 & #3`
+        ];
+        const combined = `${mainReason}. ${breakdown.join(" | ")}`;
+
+        return {
+            team1,
+            team2,
+            reason: combined,
+            mainReason,
+            scoringBreakdown: breakdown
+        };
     }
 }
 

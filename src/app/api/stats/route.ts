@@ -67,15 +67,10 @@ export async function GET(request: Request) {
 
     let results = Array.from(statsMap.values());
 
-    // Filter by session playerIds if sessionId is provided
+    // Filter to players who actually played in this session
     if (sessionId) {
-        const session = await db.getSession(sessionId);
-        if (session) {
-            results = results.filter(p => session.playerIds.includes(p.id));
-        } else {
-            // Session not found, return empty array
-            results = [];
-        }
+        // Show all players who participated in matches during this session
+        results = results.filter(p => p.matchesPlayed > 0);
     }
 
     return NextResponse.json(results);

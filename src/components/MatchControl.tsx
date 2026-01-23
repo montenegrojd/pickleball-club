@@ -19,6 +19,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [matchesScores, setMatchesScores] = useState<Record<string, { s1: string, s2: string }>>({});
     const [lastMatchReason, setLastMatchReason] = useState<{ main: string; breakdown: string[] } | null>(null);
     const [showReason, setShowReason] = useState(false);
+    const [matchMode, setMatchMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('rotation');
 
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
@@ -52,7 +53,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
 
     const generateMatch = async () => {
         setLoading(true);
-        const res = await fetch('/api/matchmaker');
+        const res = await fetch(`/api/matchmaker?mode=${matchMode}`);
         const proposal = await res.json();
 
         if (proposal && !proposal.error) {
@@ -180,24 +181,71 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-emerald-500">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="font-bold text-xl text-gray-800">Active Courts</h2>
-                <button
-                    onClick={generateMatch}
-                    disabled={loading}
-                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                    <Play className="w-4 h-4 fill-current" />
-                    New Match
-                </button>
+        <>
+            {/* New Match Card */}
+            <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-emerald-500 mb-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="font-bold text-xl text-gray-800 mb-1">Generate Match</h2>
+                        <p className="text-sm text-gray-500">Select a mode and create a new match</p>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <select
+                            value={matchMode}
+                            onChange={(e) => setMatchMode(e.target.value as 'rotation' | 'strict-partners' | 'playoff')}
+                            className="flex-1 md:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                            <option value="rotation">Rotation</option>
+                            <option value="strict-partners">No Repeat Partners</option>
+                            <option value="playoff">Playoff</option>
+                        </select>
+                        <button
+                            onClick={generateMatch}
+                            disabled={loading}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                        >
+                            <Play className="w-4 h-4 fill-current" />
+                            New Match
+                        </button>
+                    </div>
+                </div>
+
+                {/* Matchmaker Reason Info */}
+                {lastMatchReason && (
+                    <div className="mt-4 border-t pt-4">
+                        <button
+                            onClick={() => setShowReason(!showReason)}
+                            className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors w-full"
+                        >
+                            <Info className="w-4 h-4" />
+                            <span className="font-medium">Last Match Selection</span>
+                            {showReason ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                        </button>
+                        {showReason && (
+                            <div className="mt-2 text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                                <p className="font-medium mb-2">{lastMatchReason.main}</p>
+                                <div className="space-y-1 font-mono text-xs">
+                                    {lastMatchReason.breakdown.map((line, i) => (
+                                        <p key={i} className={i === 0 ? 'font-bold text-emerald-700' : 'text-gray-500'}>
+                                            {line}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {activeMatches.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 italic">
-                    No matches in progress. Click "New Match" to start.
-                </div>
-            ) : (
+            {/* Active Courts Card */}
+            <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
+                <h2 className="font-bold text-xl text-gray-800 mb-6">Active Courts</h2>
+
+                {activeMatches.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 italic">
+                        No matches in progress
+                    </div>
+                ) : (
                 <div className="grid grid-cols-1 gap-6">
                     {activeMatches.map((match, idx) => {
                         const scores = matchesScores[match.id] || { s1: '0', s2: '0' };
@@ -219,7 +267,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                                 value={scores.s1}
                                                 onChange={(e) => handleScoreInput(match.id, 1, e.target.value)}
                                                 onFocus={(e) => e.target.select()}
-                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none"
+                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none text-black"
                                             />
                                             <button onClick={() => updateScore(match.id, 1, 'inc')} className="p-2 w-10 h-10 bg-emerald-100 text-emerald-800 rounded-full font-bold hover:bg-emerald-200 active:scale-95">+</button>
                                         </div>
@@ -238,7 +286,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                                 value={scores.s2}
                                                 onChange={(e) => handleScoreInput(match.id, 2, e.target.value)}
                                                 onFocus={(e) => e.target.select()}
-                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none"
+                                                className="text-3xl font-bold w-16 text-center border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none text-black"
                                             />
                                             <button onClick={() => updateScore(match.id, 2, 'inc')} className="p-2 w-10 h-10 bg-emerald-100 text-emerald-800 rounded-full font-bold hover:bg-emerald-200 active:scale-95">+</button>
                                         </div>
@@ -266,32 +314,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     })}
                 </div>
             )}
-
-            {/* Matchmaker Reason Info */}
-            {lastMatchReason && (
-                <div className="mt-4 border-t pt-4">
-                    <button
-                        onClick={() => setShowReason(!showReason)}
-                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors w-full"
-                    >
-                        <Info className="w-4 h-4" />
-                        <span className="font-medium">Last Match Selection</span>
-                        {showReason ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
-                    </button>
-                    {showReason && (
-                        <div className="mt-2 text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                            <p className="font-medium mb-2">{lastMatchReason.main}</p>
-                            <div className="space-y-1 font-mono text-xs">
-                                {lastMatchReason.breakdown.map((line, i) => (
-                                    <p key={i} className={i === 0 ? 'font-bold text-emerald-700' : 'text-gray-500'}>
-                                        {line}
-                                    </p>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
+        </>
     );
 }

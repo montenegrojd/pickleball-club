@@ -113,7 +113,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
                                                 }}
                                                 className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full font-bold text-gray-700 hover:bg-gray-300"
                                             >-</button>
-                                            <span className="text-xl font-bold w-8 text-center">{editScores.s1}</span>
+                                            <span className="text-xl font-bold w-8 text-center text-black">{editScores.s1}</span>
                                             <button
                                                 onClick={() => {
                                                     const curr = parseInt(editScores.s1) || 0;
@@ -134,7 +134,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
                                                 }}
                                                 className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full font-bold text-gray-700 hover:bg-gray-300"
                                             >-</button>
-                                            <span className="text-xl font-bold w-8 text-center">{editScores.s2}</span>
+                                            <span className="text-xl font-bold w-8 text-center text-black">{editScores.s2}</span>
                                             <button
                                                 onClick={() => {
                                                     const curr = parseInt(editScores.s2) || 0;

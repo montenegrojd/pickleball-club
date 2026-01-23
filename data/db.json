@@ -575,21 +575,6 @@
       "score1": 8,
       "score2": 11,
       "winnerTeam": 2
-    },
-    {
-      "id": "fbfa05fd-05d0-4ae2-9a58-55de0537827d",
-      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
-      "team1": [
-        "player-3",
-        "player-5"
-      ],
-      "team2": [
-        "player-6",
-        "player-1"
-      ],
-      "isFinished": false,
-      "timestamp": 1768590604683,
-      "courtNumber": 1
     }
   ],
   "sessions": [
