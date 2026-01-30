@@ -92,7 +92,7 @@ export default function MatchmakingRules() {
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">4.</span>
-                                <span><strong className="text-gray-800">Winners Split:</strong> Winner-splitting is still applied, but partner variety takes priority</span>
+                                <span><strong className="text-gray-800">Winners Stay (Conditionally):</strong> Winners of the last match stay on court only if it doesn't create repeated partnerships - partner variety always takes priority</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">5.</span>

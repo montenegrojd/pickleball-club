@@ -111,36 +111,123 @@ export class Matchmaker {
         // 2. Calculate player stats for smart selection
         const playerStats = this.calculatePlayerStats(availablePlayerIds, history);
         
-        // 3. Prioritize players who haven't played recently
-        // Sort by: Not Fatigued > Longest bench time > Fewest games played
-        const sortedPlayers = [...availablePlayerIds].sort((a, b) => {
-            const aFatigued = playedTwoInARow.has(a);
-            const bFatigued = playedTwoInARow.has(b);
+        // 3. Get historical team pairings to check for repeats
+        const historicalTeams = this.getHistoricalTeams(history);
+        
+        // 4. For strict-partners mode: Try to keep winners on court if it doesn't create repeated partnerships
+        let selectedPlayers: string[];
+        
+        if (mode === 'strict-partners' && lastMatch && lastMatch.winnerTeam) {
+            const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+            const availableWinners = winners.filter(w => availablePlayerIds.includes(w) && !playedTwoInARow.has(w));
             
-            // Non-fatigued players go first
-            if (aFatigued !== bFatigued) {
-                return aFatigued ? 1 : -1;
+            if (availableWinners.length === 2) {
+                // Both winners are available and not fatigued
+                // Select 2 more players using rotation logic
+                const otherPlayers = availablePlayerIds
+                    .filter(id => !availableWinners.includes(id))
+                    .sort((a, b) => {
+                        const aFatigued = playedTwoInARow.has(a);
+                        const bFatigued = playedTwoInARow.has(b);
+                        
+                        if (aFatigued !== bFatigued) {
+                            return aFatigued ? 1 : -1;
+                        }
+
+                        const aStat = playerStats.get(a)!;
+                        const bStat = playerStats.get(b)!;
+
+                        if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
+                            return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
+                        }
+
+                        return aStat.gamesPlayed - bStat.gamesPlayed;
+                    });
+                
+                const candidateWithWinners = [...availableWinners, ...otherPlayers.slice(0, 2)];
+                
+                // Check if any configuration with winners would avoid all repeated partnerships
+                const [w1, w2, p1, p2] = candidateWithWinners;
+                const testConfigs = [
+                    { team1: [w1, w2], team2: [p1, p2] },
+                    { team1: [w1, p1], team2: [w2, p2] },
+                    { team1: [w1, p2], team2: [w2, p1] },
+                ];
+                
+                const hasFreshConfig = testConfigs.some(config => {
+                    const team1Key = this.normalizeTeam(config.team1[0], config.team1[1]);
+                    const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
+                    return !historicalTeams.has(team1Key) && !historicalTeams.has(team2Key);
+                });
+                
+                if (hasFreshConfig) {
+                    // Keep winners - at least one config has both teams fresh
+                    selectedPlayers = candidateWithWinners;
+                } else {
+                    // Would create repeated partnerships - use standard rotation instead
+                    selectedPlayers = [...availablePlayerIds].sort((a, b) => {
+                        const aFatigued = playedTwoInARow.has(a);
+                        const bFatigued = playedTwoInARow.has(b);
+                        
+                        if (aFatigued !== bFatigued) {
+                            return aFatigued ? 1 : -1;
+                        }
+
+                        const aStat = playerStats.get(a)!;
+                        const bStat = playerStats.get(b)!;
+
+                        if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
+                            return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
+                        }
+
+                        return aStat.gamesPlayed - bStat.gamesPlayed;
+                    }).slice(0, 4);
+                }
+            } else {
+                // Not all winners available or some are fatigued, use standard rotation
+                selectedPlayers = [...availablePlayerIds].sort((a, b) => {
+                    const aFatigued = playedTwoInARow.has(a);
+                    const bFatigued = playedTwoInARow.has(b);
+                    
+                    if (aFatigued !== bFatigued) {
+                        return aFatigued ? 1 : -1;
+                    }
+
+                    const aStat = playerStats.get(a)!;
+                    const bStat = playerStats.get(b)!;
+
+                    if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
+                        return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
+                    }
+
+                    return aStat.gamesPlayed - bStat.gamesPlayed;
+                }).slice(0, 4);
             }
+        } else {
+            // Rotation mode or no winners to prioritize: standard player selection
+            // Sort by: Not Fatigued > Longest bench time > Fewest games played
+            selectedPlayers = [...availablePlayerIds].sort((a, b) => {
+                const aFatigued = playedTwoInARow.has(a);
+                const bFatigued = playedTwoInARow.has(b);
+                
+                if (aFatigued !== bFatigued) {
+                    return aFatigued ? 1 : -1;
+                }
 
-            const aStat = playerStats.get(a)!;
-            const bStat = playerStats.get(b)!;
+                const aStat = playerStats.get(a)!;
+                const bStat = playerStats.get(b)!;
 
-            // Prioritize players who sat out longer
-            if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
-                return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
-            }
+                if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
+                    return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
+                }
 
-            // Tie-breaker: Fewer games played overall
-            return aStat.gamesPlayed - bStat.gamesPlayed;
-        });
+                return aStat.gamesPlayed - bStat.gamesPlayed;
+            }).slice(0, 4);
+        }
 
-        const selectedPlayers = sortedPlayers.slice(0, 4);
         if (selectedPlayers.length < 4) return null;
 
-        // 4. Get historical team pairings to avoid repeats
-        const historicalTeams = this.getHistoricalTeams(history);
-
-        // 5. Generate all possible team combinations from selected 4 players
+        // 6. Generate all possible team combinations from selected 4 players
         const [p1, p2, p3, p4] = selectedPlayers;
         
         // All possible team configurations:
@@ -153,7 +240,7 @@ export class Matchmaker {
             { team1: [p1, p4], team2: [p2, p3] },
         ];
 
-        // 6. Score each configuration and select the best
+        // 7. Score each configuration and select the best
         const scoredConfigs: Array<{ config: { team1: string[], team2: string[] }, score: number }> = [];
 
         configs.forEach(config => {
@@ -163,30 +250,47 @@ export class Matchmaker {
             const team2Key = this.normalizeTeam(config.team2[0], config.team2[1]);
 
             if (mode === 'strict-partners') {
-                // STRICT MODE: Apply heavy penalty for any repeated partnership
+                // STRICT-PARTNERS MODE: Partner variety is the top priority
+                // Heavy penalty for any repeated partnership
                 if (historicalTeams.has(team1Key)) score -= 1000;
                 if (historicalTeams.has(team2Key)) score -= 1000;
+
+                // Winner-splitting is applied but with lower priority than partner variety
+                if (lastMatch && lastMatch.winnerTeam) {
+                    const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+                    const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
+
+                    if (winnersInSelection.length === 2) {
+                        const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
+                        
+                        // Reward splitting the winners (but less than partner variety penalty)
+                        if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
+                            score += 50; // Winners are split (lower priority)
+                        } else {
+                            score -= 75; // Winners together (mild penalty)
+                        }
+                    }
+                }
             } else {
                 // ROTATION MODE: Current balanced approach
                 // Heavily penalize if teams have played together before
                 if (historicalTeams.has(team1Key)) score -= 100;
                 if (historicalTeams.has(team2Key)) score -= 100;
-            }
 
-            // Apply winner-splitting rule: if last match had winners, they should be split
-            // (Applied in both modes, though strict mode prioritizes fresh partnerships)
-            if (lastMatch && lastMatch.winnerTeam) {
-                const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
-                const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
+                // Apply winner-splitting rule: if last match had winners, they should be split
+                if (lastMatch && lastMatch.winnerTeam) {
+                    const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+                    const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
 
-                if (winnersInSelection.length === 2) {
-                    const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
-                    
-                    // Heavily reward splitting the winners
-                    if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
-                        score += 200; // Winners are split
-                    } else {
-                        score -= 300; // Winners are together again (bad!)
+                    if (winnersInSelection.length === 2) {
+                        const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
+                        
+                        // Heavily reward splitting the winners
+                        if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
+                            score += 200; // Winners are split
+                        } else {
+                            score -= 300; // Winners are together again (bad!)
+                        }
                     }
                 }
             }

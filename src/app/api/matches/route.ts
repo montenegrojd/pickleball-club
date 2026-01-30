@@ -7,7 +7,6 @@ import { v4 as uuidv4 } from 'uuid';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    const range = searchParams.get('range');
 
     let matches: Match[];
     
@@ -15,17 +14,12 @@ export async function GET(request: Request) {
         // Get matches for specific session
         matches = await db.getMatchesBySessionId(sessionId);
     } else {
-        // Get all matches or filter by range
-        matches = await db.getMatches();
-        
-        // Filter by active session if range is 'today'
-        if (range === 'today') {
-            const activeSession = await db.getActiveSession();
-            if (activeSession) {
-                matches = matches.filter(m => m.sessionId === activeSession.id);
-            } else {
-                matches = [];
-            }
+        // Get matches for active session
+        const activeSession = await db.getActiveSession();
+        if (activeSession) {
+            matches = await db.getMatchesBySessionId(activeSession.id);
+        } else {
+            matches = [];
         }
     }
 

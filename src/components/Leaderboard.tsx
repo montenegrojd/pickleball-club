@@ -6,31 +6,31 @@ import { Player } from '@/lib/types';
 import { Trophy } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function Leaderboard({ refreshTrigger, range = 'today', sessionId }: { refreshTrigger?: number, range?: 'today' | 'all', sessionId?: string }) {
+export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: { refreshTrigger?: number, sessionId?: string, showAllTime?: boolean }) {
     const [players, setPlayers] = useState<Player[]>([]);
 
     useEffect(() => {
         const url = sessionId 
             ? `/api/stats?sessionId=${sessionId}`
-            : `/api/stats?range=${range}`;
+            : showAllTime ? `/api/stats?range=all` : `/api/stats`;
         
         fetch(url)
             .then(res => res.json())
             .then(data => {
-                // Sort by matches won
+                // Sort by matches won, then by points scored
                 const sorted = (data as Player[]).sort((a, b) => {
                     if (b.matchesWon !== a.matchesWon) return b.matchesWon - a.matchesWon;
-                    return b.matchesPlayed - a.matchesPlayed;
+                    return (b.pointsScored || 0) - (a.pointsScored || 0);
                 });
                 setPlayers(sorted);
             });
-    }, [refreshTrigger, range, sessionId]);
+    }, [refreshTrigger, sessionId, showAllTime]);
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-2 mb-4 text-amber-500">
                 <Trophy className="w-5 h-5" />
-                <h2 className="font-bold text-lg text-gray-800">{range === 'all' ? 'Hall of Fame' : "Leaderboard"}</h2>
+                <h2 className="font-bold text-lg text-gray-800">{showAllTime ? 'Hall of Fame' : "Leaderboard"}</h2>
             </div>
 
             <div className="overflow-x-auto">

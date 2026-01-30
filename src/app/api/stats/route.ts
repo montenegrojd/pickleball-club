@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    const range = searchParams.get('range') || 'today';
+    const showAllTime = searchParams.get('range') === 'all';
 
     const players = await db.getPlayers();
     let matches: Match[];
@@ -16,17 +16,17 @@ export async function GET(request: Request) {
     if (sessionId) {
         // Get matches for specific session
         matches = await db.getMatchesBySessionId(sessionId);
-    } else if (range === 'today') {
-        // Get matches for active session
+    } else if (showAllTime) {
+        // Get all matches for hall of fame
+        matches = await db.getMatches();
+    } else {
+        // Get matches for active session (default)
         const activeSession = await db.getActiveSession();
         if (activeSession) {
             matches = await db.getMatchesBySessionId(activeSession.id);
         } else {
             matches = [];
         }
-    } else {
-        // Get all matches
-        matches = await db.getMatches();
     }
 
     // Filter to finished matches only

@@ -30,7 +30,7 @@ export default function HallOfFamePage() {
             {/* Main Content */}
             <main className="min-h-screen bg-gray-50 p-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
                 <div className="max-w-2xl mx-auto">
-                    <Leaderboard range="all" />
+                    <Leaderboard showAllTime />
                 </div>
             </main>
         </>

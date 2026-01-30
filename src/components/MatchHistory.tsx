@@ -15,7 +15,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
     useEffect(() => {
         const matchesUrl = sessionId 
             ? `/api/matches?sessionId=${sessionId}`
-            : '/api/matches?range=today';
+            : '/api/matches';
         
         Promise.all([
             fetch(matchesUrl).then(res => res.json()),
@@ -29,6 +29,18 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
 
     const getNames = (ids: string[]) => {
         return ids.map(id => players.find(p => p.id === id)?.name || 'Unknown').join(' & ');
+    };
+
+    const getRelativeTime = (timestamp: number) => {
+        const now = Date.now();
+        const diff = now - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes} min ago`;
+        if (hours < 24) return `${hours} hr ago`;
+        return `${Math.floor(hours / 24)} day ago`;
     };
 
     const startEdit = (m: Match) => {
@@ -93,8 +105,15 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
 
             {isExpanded && (
                 <div className="space-y-3">
-                    {finishedMatches.map(m => (
+                    {finishedMatches.map((m, index) => (
                         <div key={m.id} className="flex flex-col md:flex-row items-center justify-between p-3 bg-gray-50 rounded-lg text-sm border border-gray-100">
+                            {/* Game number and time */}
+                            <div className="md:mr-3 mb-2 md:mb-0 flex items-center gap-2 text-xs text-gray-400">
+                                <span className="font-bold text-gray-500">#{finishedMatches.length - index}</span>
+                                <span>·</span>
+                                <span>{getRelativeTime(m.timestamp)}</span>
+                            </div>
+                            
                             <div className="flex-1 flex justify-end gap-2 text-right">
                                 <span className={m.winnerTeam === 1 ? "font-bold text-gray-900" : "text-gray-500"}>
                                     {getNames(m.team1)}
