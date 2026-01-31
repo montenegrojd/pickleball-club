@@ -4,7 +4,7 @@ import { Info } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MatchmakingRules() {
-    const [selectedMode, setSelectedMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('rotation');
+    const [selectedMode, setSelectedMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('strict-partners');
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
@@ -16,6 +16,16 @@ export default function MatchmakingRules() {
                     {/* Mode Selector Tabs */}
                     <div className="flex gap-2 mb-4 border-b border-gray-200">
                         <button
+                            onClick={() => setSelectedMode('strict-partners')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                                selectedMode === 'strict-partners'
+                                    ? 'border-emerald-600 text-emerald-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            Rotation (new)
+                        </button>
+                        <button
                             onClick={() => setSelectedMode('rotation')}
                             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                                 selectedMode === 'rotation'
@@ -24,16 +34,6 @@ export default function MatchmakingRules() {
                             }`}
                         >
                             Rotation
-                        </button>
-                        <button
-                            onClick={() => setSelectedMode('strict-partners')}
-                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                                selectedMode === 'strict-partners'
-                                    ? 'border-emerald-600 text-emerald-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            No Repeat Partners
                         </button>
                         <button
                             onClick={() => setSelectedMode('playoff')}
@@ -84,15 +84,15 @@ export default function MatchmakingRules() {
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">2.</span>
-                                <span><strong className="text-gray-800">Fair Rotation:</strong> Same as Rotation - players who sat out the longest are selected first, then those with fewest games played</span>
+                                <span><strong className="text-gray-800">Winners Stay (Conditionally):</strong> Winners of the last match stay on court only if it doesn't create repeated partnerships - partner variety always takes priority</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">3.</span>
-                                <span><strong className="text-gray-800">No Repeat Partners:</strong> Any partnership that has played together before receives a heavy penalty, ensuring maximum partner variety</span>
+                                <span><strong className="text-gray-800">Fair Rotation:</strong> For the other 2 players, those who sat out the longest are selected first, then those with fewest games played</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">4.</span>
-                                <span><strong className="text-gray-800">Winners Stay (Conditionally):</strong> Winners of the last match stay on court only if it doesn't create repeated partnerships - partner variety always takes priority</span>
+                                <span><strong className="text-gray-800">Rotation (new):</strong> Any partnership that has played together before receives a heavy penalty, ensuring maximum partner variety</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="font-semibold min-w-[20px] text-gray-500">5.</span>

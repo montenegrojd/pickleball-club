@@ -1,12 +1,20 @@
 
 import { Match, Player } from './types';
 
+interface MatchAnalytics {
+    hadFatiguedPlayers: string[];
+    winnersWereSplit: boolean | null;
+    repeatedPartnerships: Array<{ player1: string, player2: string }>;
+    keptWinners: boolean;
+}
+
 interface MatchProposal {
     team1: string[];
     team2: string[];
     reason: string;
     mainReason: string;
     scoringBreakdown: string[];
+    analytics?: MatchAnalytics;
 }
 
 interface PlayerStats {
@@ -303,13 +311,79 @@ export class Matchmaker {
         const bestConfig = scoredConfigs[0].config;
 
         const reasonData = this.generateReason(scoredConfigs, historicalTeams, playedTwoInARow, playerNames, mode);
+        
+        // Generate analytics for the selected match
+        const analytics = this.generateAnalytics(
+            history,
+            bestConfig,
+            selectedPlayers,
+            historicalTeams,
+            playedTwoInARow,
+            mode
+        );
 
         return {
             team1: bestConfig.team1,
             team2: bestConfig.team2,
             reason: reasonData.combined,
             mainReason: reasonData.main,
-            scoringBreakdown: reasonData.breakdown
+            scoringBreakdown: reasonData.breakdown,
+            analytics
+        };
+    }
+
+    /**
+     * Generate analytics for the proposed match
+     */
+    private static generateAnalytics(
+        history: Match[],
+        proposal: { team1: string[], team2: string[] },
+        selectedPlayers: string[],
+        historicalTeams: Set<string>,
+        fatigued: Set<string>,
+        mode: 'rotation' | 'strict-partners' = 'rotation'
+    ): MatchAnalytics {
+        const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
+        const lastMatch = sortedHistory[0];
+
+        // Check for fatigued players in the selected 4
+        const hadFatiguedPlayers = selectedPlayers.filter(id => fatigued.has(id));
+
+        // Check if winners were split
+        let winnersWereSplit: boolean | null = null;
+        let keptWinners = false;
+        if (lastMatch && lastMatch.winnerTeam) {
+            const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+            const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
+            
+            if (winnersInSelection.length === 2) {
+                const winnersKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
+                const team1Key = this.normalizeTeam(proposal.team1[0], proposal.team1[1]);
+                const team2Key = this.normalizeTeam(proposal.team2[0], proposal.team2[1]);
+                winnersWereSplit = (team1Key !== winnersKey && team2Key !== winnersKey);
+                keptWinners = true;
+            }
+        }
+
+        // Check for repeated partnerships
+        const repeatedPartnerships: Array<{ player1: string, player2: string }> = [];
+        const team1Key = this.normalizeTeam(proposal.team1[0], proposal.team1[1]);
+        const team2Key = this.normalizeTeam(proposal.team2[0], proposal.team2[1]);
+        
+        if (historicalTeams.has(team1Key)) {
+            const sorted = [...proposal.team1].sort();
+            repeatedPartnerships.push({ player1: sorted[0], player2: sorted[1] });
+        }
+        if (historicalTeams.has(team2Key)) {
+            const sorted = [...proposal.team2].sort();
+            repeatedPartnerships.push({ player1: sorted[0], player2: sorted[1] });
+        }
+
+        return {
+            hadFatiguedPlayers,
+            winnersWereSplit,
+            repeatedPartnerships,
+            keptWinners
         };
     }
 

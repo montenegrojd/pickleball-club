@@ -5,6 +5,13 @@ import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
 import { Play, CheckCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
+interface MatchAnalytics {
+    hadFatiguedPlayers: string[];
+    winnersWereSplit: boolean | null;
+    repeatedPartnerships: Array<{ player1: string, player2: string }>;
+    keptWinners: boolean;
+}
+
 interface MatchControlProps {
     onUpdate: () => void;
     refreshTrigger: number;
@@ -17,9 +24,9 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
     // Local state to track scores for each match. Keyed by valid match ID.
     const [matchesScores, setMatchesScores] = useState<Record<string, { s1: string, s2: string }>>({});
-    const [lastMatchReason, setLastMatchReason] = useState<{ main: string; breakdown: string[] } | null>(null);
-    const [showReason, setShowReason] = useState(false);
-    const [matchMode, setMatchMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('rotation');
+    const [lastMatchAnalytics, setLastMatchAnalytics] = useState<MatchAnalytics | null>(null);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [matchMode, setMatchMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('strict-partners');
 
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
@@ -57,13 +64,10 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         const proposal = await res.json();
 
         if (proposal && !proposal.error) {
-            // Store the reason for display
-            if (proposal.mainReason && proposal.scoringBreakdown) {
-                setLastMatchReason({
-                    main: proposal.mainReason,
-                    breakdown: proposal.scoringBreakdown
-                });
-                setShowReason(true);
+            // Store analytics for display
+            if (proposal.analytics) {
+                setLastMatchAnalytics(proposal.analytics);
+                setShowAnalytics(true);
             }
 
             // Determine next court number
@@ -192,11 +196,11 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <select
                             value={matchMode}
-                            onChange={(e) => setMatchMode(e.target.value as 'rotation' | 'strict-partners' | 'playoff')}
+                            onChange={(e) => setMatchMode(e.target.value as 'strict-partners' | 'rotation' | 'playoff')}
                             className="flex-1 md:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
+                            <option value="strict-partners">Rotation (new)</option>
                             <option value="rotation">Rotation</option>
-                            <option value="strict-partners">No Repeat Partners</option>
                             <option value="playoff">Playoff</option>
                         </select>
                         <button
@@ -210,26 +214,72 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     </div>
                 </div>
 
-                {/* Matchmaker Reason Info */}
-                {lastMatchReason && (
+                {/* Match Analytics */}
+                {lastMatchAnalytics && (
                     <div className="mt-4 border-t pt-4">
                         <button
-                            onClick={() => setShowReason(!showReason)}
+                            onClick={() => setShowAnalytics(!showAnalytics)}
                             className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors w-full"
                         >
                             <Info className="w-4 h-4" />
-                            <span className="font-medium">Last Match Selection</span>
-                            {showReason ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                            <span className="font-medium">Match Quality</span>
+                            {showAnalytics ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
                         </button>
-                        {showReason && (
+                        {showAnalytics && (
                             <div className="mt-2 text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                                <p className="font-medium mb-2">{lastMatchReason.main}</p>
-                                <div className="space-y-1 font-mono text-xs">
-                                    {lastMatchReason.breakdown.map((line, i) => (
-                                        <p key={i} className={i === 0 ? 'font-bold text-emerald-700' : 'text-gray-500'}>
-                                            {line}
-                                        </p>
-                                    ))}
+                                        <div className="flex gap-2 flex-wrap text-xs">
+                                            {lastMatchAnalytics.hadFatiguedPlayers.length === 0 && (
+                                                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold">
+                                                    ✓ No Fatigue
+                                                </span>
+                                            )}
+                                            {lastMatchAnalytics.hadFatiguedPlayers.length > 0 && (
+                                                <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded font-semibold">
+                                                    ⚠️ {lastMatchAnalytics.hadFatiguedPlayers.length} Fatigued
+                                                </span>
+                                            )}
+                                            {lastMatchAnalytics.winnersWereSplit === true && (
+                                                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold">
+                                                    ✓ Winners Split
+                                                </span>
+                                            )}
+                                            {lastMatchAnalytics.winnersWereSplit === false && (
+                                                <span className="px-2 py-1 bg-red-100 text-red-700 rounded font-semibold">
+                                                    ✗ Winners Together
+                                                </span>
+                                            )}
+                                            {lastMatchAnalytics.repeatedPartnerships.length === 0 && (
+                                                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold">
+                                                    ✓ Fresh Partners
+                                                </span>
+                                            )}
+                                            {lastMatchAnalytics.repeatedPartnerships.length > 0 && (
+                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded font-semibold">
+                                                    🔄 {lastMatchAnalytics.repeatedPartnerships.length} Repeat
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Detailed analytics info */}
+                                        <div className="mt-2 space-y-1 text-xs">
+                                            {lastMatchAnalytics.hadFatiguedPlayers.length > 0 && (
+                                                <div className="flex gap-2">
+                                                    <span className="font-semibold text-orange-700">⚠️ Fatigued:</span>
+                                                    <span>{lastMatchAnalytics.hadFatiguedPlayers.map(id => allPlayers.find(p => p.id === id)?.name || 'Unknown').join(', ')} played 2 consecutive games</span>
+                                                </div>
+                                            )}
+                                            {lastMatchAnalytics.repeatedPartnerships.length > 0 && (
+                                                <div className="flex gap-2">
+                                                    <span className="font-semibold text-yellow-700">🔄 Repeats:</span>
+                                                    <span>
+                                                        {lastMatchAnalytics.repeatedPartnerships.map(p => {
+                                                            const name1 = allPlayers.find(player => player.id === p.player1)?.name || 'Unknown';
+                                                            const name2 = allPlayers.find(player => player.id === p.player2)?.name || 'Unknown';
+                                                            return `${name1} & ${name2}`;
+                                                        }).join(', ')} played together before
+                                                    </span>
+                                                </div>
+                                            )}
                                 </div>
                             </div>
                         )}
