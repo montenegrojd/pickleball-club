@@ -5,6 +5,11 @@ import { Play, RotateCcw, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { Matchmaker } from '@/lib/matchmaker';
 import { Match, Player } from '@/lib/types';
 
+// Extended Player interface for simulation with skill level
+interface SimulationPlayer extends Player {
+    skill: number; // Win probability (0.0 to 1.0)
+}
+
 interface SimulationConfig {
     playerCount: number;
     matchCount: number;
@@ -27,6 +32,7 @@ interface QualityMetrics {
     fatigueAvoidance: { count: number; total: number; percentage: number };
     winnerSplitting: { count: number; total: number; percentage: number };
     partnershipVariety: { count: number; total: number; percentage: number };
+    unusedPartnerships: { used: number; total: number; unused: number; percentage: number };
 }
 
 interface SimulationStats {
@@ -40,7 +46,7 @@ interface SimulationStats {
 
 interface SimulationResult {
     matches: EnhancedMatch[];
-    players: Player[];
+    players: SimulationPlayer[];
     stats: SimulationStats;
     quality: QualityMetrics;
     mode: 'rotation' | 'strict-partners';
@@ -67,22 +73,36 @@ export default function SimulatorPage() {
         setExpandedMatches(newExpanded);
     };
 
-    const generateRandomPlayers = (count: number): Player[] => {
-        const names = ['Javier','Diego','Sebas','Horacio','Ivan','Jorge','Xavi','Fede','David','Victor', 'Lars'];
+    const generateRandomPlayers = (count: number): SimulationPlayer[] => {
+        // Each player has a name and a skill level (0.3 to 0.7 representing win probability)
+        const playersData = [
+            { name: 'Javier', skill: 0.31 },
+            { name: 'Diego', skill: 0.53 },
+            { name: 'Sebas', skill: 0.32 },
+            { name: 'Horacio', skill: 0.45 },
+            { name: 'Ivan', skill: 0.64 },
+            { name: 'Jorge', skill: 0.71 },
+            { name: 'Xavi', skill: 0.36 },
+            { name: 'Fede', skill: 0.76 },
+            { name: 'David', skill: 0.37 },
+            { name: 'Victor', skill: 0.44 },
+            { name: 'Lars', skill: 1 }
+        ];
         
         return Array.from({ length: count }, (_, i) => ({
             id: `player-${i + 1}`,
-            name: names[i] || `Player ${i + 1}`,
+            name: playersData[i]?.name || `Player ${i + 1}`,
             isCheckedIn: true,
             matchesPlayed: 0,
             matchesWon: 0,
             pointsScored: 0,
-            pointsAllowed: 0
+            pointsAllowed: 0,
+            skill: playersData[i]?.skill || 0.5 // Default to 0.5 if not specified
         }));
     };
 
     const runSimulation = (mode: 'rotation' | 'strict-partners'): SimulationResult => {
-        const players = generateRandomPlayers(config.playerCount);
+        const players: SimulationPlayer[] = generateRandomPlayers(config.playerCount);
         const matches: EnhancedMatch[] = [];
         const playerMap = new Map(players.map(p => [p.id, p.name]));
         let matchCounter = 0;
@@ -100,10 +120,28 @@ export default function SimulatorPage() {
             // Analyze the match decision
             const analytics = analyzeMatchDecision(matches, proposal, availablePlayers, players);
 
-            // Generate random scores (0-11)
-            const score1 = Math.floor(Math.random() * 12);
-            const score2 = Math.floor(Math.random() * 12);
-            const winnerTeam = score1 > score2 ? 1 : score1 < score2 ? 2 : (Math.random() > 0.5 ? 1 : 2);
+            // Calculate team skills (average of both players)
+            const team1Skill = proposal.team1.reduce((sum, id) => {
+                const player = players.find(p => p.id === id);
+                return sum + (player?.skill || 0.5);
+            }, 0) / proposal.team1.length;
+            
+            const team2Skill = proposal.team2.reduce((sum, id) => {
+                const player = players.find(p => p.id === id);
+                return sum + (player?.skill || 0.5);
+            }, 0) / proposal.team2.length;
+
+            // Determine winner based on skill with some randomness
+            // Higher skill team has better chance to win, but not guaranteed
+            const totalSkill = team1Skill + team2Skill;
+            const team1WinProbability = team1Skill / totalSkill;
+            const winnerTeam = Math.random() < team1WinProbability ? 1 : 2;
+            
+            // Generate scores that reflect the winner (winner gets 11, loser gets 0-10)
+            const winnerScore = 11;
+            const loserScore = Math.floor(Math.random() * 11); // 0-10
+            const score1 = winnerTeam === 1 ? winnerScore : loserScore;
+            const score2 = winnerTeam === 2 ? winnerScore : loserScore;
 
             const match: EnhancedMatch = {
                 id: `match-${++matchCounter}`,
@@ -145,7 +183,7 @@ export default function SimulatorPage() {
 
         // Calculate statistics and quality metrics
         const stats = calculateStats(players, matches, lastPlayedTime);
-        const quality = calculateQualityMetrics(matches);
+        const quality = calculateQualityMetrics(matches, players.length);
 
         return {
             matches,
@@ -160,7 +198,7 @@ export default function SimulatorPage() {
         history: EnhancedMatch[],
         proposal: { team1: string[], team2: string[] },
         availablePlayers: string[],
-        players: Player[]
+        players: SimulationPlayer[]
     ): MatchAnalytics => {
         const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
         const lastMatch = sortedHistory[0];
@@ -230,11 +268,14 @@ export default function SimulatorPage() {
         };
     };
 
-    const calculateQualityMetrics = (matches: EnhancedMatch[]): QualityMetrics => {
+    const calculateQualityMetrics = (matches: EnhancedMatch[], playerCount: number): QualityMetrics => {
         let fatigueAvoidanceCount = 0;
         let winnerSplitCount = 0;
         let winnerSplitTotal = 0;
         let partnershipVarietyCount = 0;
+
+        // Track all partnerships used
+        const usedPartnerships = new Set<string>();
 
         matches.forEach(match => {
             // Fatigue avoidance (no fatigued players is good)
@@ -254,7 +295,20 @@ export default function SimulatorPage() {
             if (match.analytics.repeatedPartnerships.length === 0) {
                 partnershipVarietyCount++;
             }
+
+            // Track partnerships
+            if (match.team1.length === 2) {
+                usedPartnerships.add([...match.team1].sort().join('-'));
+            }
+            if (match.team2.length === 2) {
+                usedPartnerships.add([...match.team2].sort().join('-'));
+            }
         });
+
+        // Calculate total possible partnerships: C(n,2) = n*(n-1)/2
+        const totalPossiblePartnerships = (playerCount * (playerCount - 1)) / 2;
+        const usedCount = usedPartnerships.size;
+        const unusedCount = totalPossiblePartnerships - usedCount;
 
         return {
             fatigueAvoidance: {
@@ -271,12 +325,18 @@ export default function SimulatorPage() {
                 count: partnershipVarietyCount,
                 total: matches.length,
                 percentage: matches.length > 0 ? (partnershipVarietyCount / matches.length) * 100 : 0
+            },
+            unusedPartnerships: {
+                used: usedCount,
+                total: totalPossiblePartnerships,
+                unused: unusedCount,
+                percentage: totalPossiblePartnerships > 0 ? (usedCount / totalPossiblePartnerships) * 100 : 0
             }
         };
     };
 
     const calculateStats = (
-        players: Player[],
+        players: SimulationPlayer[],
         matches: Match[],
         lastPlayedTime: Map<string, number>
     ): SimulationStats => {
@@ -524,6 +584,22 @@ export default function SimulatorPage() {
                                                 </span>
                                             </div>
                                         </div>
+
+                                        {/* Partnerships Coverage */}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <div className="text-sm font-semibold text-gray-700">Partnerships Coverage</div>
+                                                <div className="text-xs text-gray-500">Unique partnerships used vs possible</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-600">
+                                                    {result.quality.unusedPartnerships.used}/{result.quality.unusedPartnerships.total}
+                                                </span>
+                                                <span className={`text-lg font-bold ${result.quality.unusedPartnerships.percentage >= 75 ? 'text-emerald-600' : result.quality.unusedPartnerships.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                    {result.quality.unusedPartnerships.percentage.toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -607,6 +683,7 @@ export default function SimulatorPage() {
                                             <thead className="text-xs text-gray-500 uppercase bg-gray-50">
                                                 <tr>
                                                     <th className="px-3 py-2 text-left">Player</th>
+                                                    <th className="px-3 py-2 text-center">Skill</th>
                                                     <th className="px-3 py-2 text-center">Games</th>
                                                     <th className="px-3 py-2 text-center">Wins</th>
                                                     <th className="px-3 py-2 text-center">W%</th>
@@ -618,9 +695,15 @@ export default function SimulatorPage() {
                                                     const winPct = player.matchesPlayed > 0 
                                                         ? ((player.matchesWon / player.matchesPlayed) * 100).toFixed(0) 
                                                         : '0';
+                                                    const skillLevel = player.skill;
                                                     return (
                                                         <tr key={player.id}>
                                                             <td className="px-3 py-2 font-medium text-gray-900">{player.name}</td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                <span className={`font-semibold ${skillLevel >= 0.6 ? 'text-purple-600' : skillLevel >= 0.5 ? 'text-blue-600' : 'text-gray-600'}`}>
+                                                                    {(skillLevel * 100).toFixed(0)}%
+                                                                </span>
+                                                            </td>
                                                             <td className="px-3 py-2 text-center text-gray-600">{player.matchesPlayed}</td>
                                                             <td className="px-3 py-2 text-center font-bold text-emerald-600">{player.matchesWon}</td>
                                                             <td className="px-3 py-2 text-center font-semibold text-blue-600">{winPct}%</td>

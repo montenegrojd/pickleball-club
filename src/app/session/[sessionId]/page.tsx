@@ -8,6 +8,7 @@ import Roster from '@/components/Roster';
 import MatchControl from '@/components/MatchControl';
 import Leaderboard from '@/components/Leaderboard';
 import MatchHistory from '@/components/MatchHistory';
+import SessionStats from '@/components/SessionStats';
 import MatchmakingRules from '@/components/MatchmakingRules';
 import { RosterSession } from '@/lib/types';
 
@@ -107,6 +108,7 @@ export default function SessionDashboard() {
               <Leaderboard refreshTrigger={refreshTrigger} sessionId={sessionId} />
               {/* Match History - shows below leaderboard on mobile, stays in left column on desktop */}
               <div className="md:hidden">
+                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} />
                 <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} />
                 <MatchmakingRules />
               </div>
@@ -119,6 +121,7 @@ export default function SessionDashboard() {
               )}
               {/* Match History - hidden on mobile, shows on desktop */}
               <div className="hidden md:block">
+                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} />
                 <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} />
                 <MatchmakingRules />
               </div>
