@@ -2,6 +2,7 @@
 'use client';
 
 import Leaderboard from '@/components/Leaderboard';
+import PlayerInsights from '@/components/PlayerInsights';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
 
@@ -29,8 +30,9 @@ export default function HallOfFamePage() {
 
             {/* Main Content */}
             <main className="min-h-screen bg-gray-50 p-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
-                <div className="max-w-2xl mx-auto">
+                <div className="max-w-2xl mx-auto space-y-6">
                     <Leaderboard showAllTime />
+                    <PlayerInsights showAllTime />
                 </div>
             </main>
         </>

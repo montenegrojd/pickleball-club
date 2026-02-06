@@ -26,7 +26,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [matchesScores, setMatchesScores] = useState<Record<string, { s1: string, s2: string }>>({});
     const [lastMatchAnalytics, setLastMatchAnalytics] = useState<MatchAnalytics | null>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
-    const [matchMode, setMatchMode] = useState<'rotation' | 'strict-partners' | 'playoff'>('strict-partners');
+    const [matchMode, setMatchMode] = useState<'rotation' | 'playoff'>('rotation');
 
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
@@ -196,10 +196,9 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <select
                             value={matchMode}
-                            onChange={(e) => setMatchMode(e.target.value as 'strict-partners' | 'rotation' | 'playoff')}
+                            onChange={(e) => setMatchMode(e.target.value as 'rotation' | 'playoff')}
                             className="flex-1 md:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
-                            <option value="strict-partners">Rotation (new)</option>
                             <option value="rotation">Rotation</option>
                             <option value="playoff">Playoff</option>
                         </select>

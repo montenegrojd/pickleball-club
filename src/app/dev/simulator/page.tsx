@@ -13,7 +13,6 @@ interface SimulationPlayer extends Player {
 interface SimulationConfig {
     playerCount: number;
     matchCount: number;
-    mode: 'rotation' | 'strict-partners' | 'comparison';
 }
 
 interface MatchAnalytics {
@@ -49,14 +48,12 @@ interface SimulationResult {
     players: SimulationPlayer[];
     stats: SimulationStats;
     quality: QualityMetrics;
-    mode: 'rotation' | 'strict-partners';
 }
 
 export default function SimulatorPage() {
     const [config, setConfig] = useState<SimulationConfig>({
         playerCount: 8,
-        matchCount: 20,
-        mode: 'rotation'
+        matchCount: 20
     });
     
     const [isRunning, setIsRunning] = useState(false);
@@ -101,7 +98,7 @@ export default function SimulatorPage() {
         }));
     };
 
-    const runSimulation = (mode: 'rotation' | 'strict-partners'): SimulationResult => {
+    const runSimulation = (): SimulationResult => {
         const players: SimulationPlayer[] = generateRandomPlayers(config.playerCount);
         const matches: EnhancedMatch[] = [];
         const playerMap = new Map(players.map(p => [p.id, p.name]));
@@ -113,9 +110,7 @@ export default function SimulatorPage() {
 
         for (let i = 0; i < config.matchCount; i++) {
             const availablePlayers = players.map(p => p.id);
-            const proposal = Matchmaker.proposeMatch(availablePlayers, matches, playerMap, mode);
-            
-            if (!proposal) break;
+            const proposal = Matchmaker.proposeMatch(availablePlayers, matches, playerMap);
 
             // Analyze the match decision
             const analytics = analyzeMatchDecision(matches, proposal, availablePlayers, players);
@@ -189,8 +184,7 @@ export default function SimulatorPage() {
             matches,
             players,
             stats,
-            quality,
-            mode
+            quality
         };
     };
 
@@ -410,16 +404,7 @@ export default function SimulatorPage() {
         setIsRunning(true);
         
         setTimeout(() => {
-            const newResults: SimulationResult[] = [];
-            
-            if (config.mode === 'comparison') {
-                newResults.push(runSimulation('rotation'));
-                newResults.push(runSimulation('strict-partners'));
-            } else {
-                newResults.push(runSimulation(config.mode));
-            }
-            
-            setResults(newResults);
+            setResults([runSimulation()]);
             setIsRunning(false);
         }, 100);
     };
@@ -449,7 +434,7 @@ export default function SimulatorPage() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Configuration</h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Player Count */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -479,22 +464,6 @@ export default function SimulatorPage() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                         </div>
-
-                        {/* Mode */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Matchmaking Mode
-                            </label>
-                            <select
-                                value={config.mode}
-                                onChange={(e) => setConfig({ ...config, mode: e.target.value as any })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            >
-                                <option value="rotation">Rotation</option>
-                                <option value="strict-partners">Rotation (new)</option>
-                                <option value="comparison">Compare Both</option>
-                            </select>
-                        </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -522,13 +491,13 @@ export default function SimulatorPage() {
 
                 {/* Results */}
                 {results.length > 0 && (
-                    <div className={`grid grid-cols-1 ${results.length > 1 ? 'lg:grid-cols-2' : ''} gap-6`}>
+                    <div className="grid grid-cols-1 gap-6">
                         {results.map((result, idx) => (
                             <div key={idx} className="space-y-6">
-                                {/* Mode Header */}
+                                {/* Results Header */}
                                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="text-lg font-bold text-gray-800 capitalize">
-                                        {result.mode === 'strict-partners' ? 'Rotation (new)' : 'Rotation'} Mode
+                                    <h3 className="text-lg font-bold text-gray-800">
+                                        Simulation Results
                                     </h3>
                                 </div>
 

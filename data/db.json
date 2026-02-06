@@ -615,18 +615,18 @@
       "winnerTeam": 2
     },
     {
-      "id": "10678c8e-777a-409f-887f-64f376ab6aca",
+      "id": "d6d94882-51e7-4572-b765-940f02e6da46",
       "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
       "team1": [
-        "player-7",
-        "player-1"
+        "player-4",
+        "player-3"
       ],
       "team2": [
-        "player-4",
-        "player-2"
+        "player-6",
+        "player-7"
       ],
       "isFinished": false,
-      "timestamp": 1769880861087,
+      "timestamp": 1770411956944,
       "courtNumber": 1
     }
   ],

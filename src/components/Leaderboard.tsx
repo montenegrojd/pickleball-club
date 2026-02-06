@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { Player } from '@/lib/types';
 import { Trophy } from 'lucide-react';
-import clsx from 'clsx';
 
 export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: { refreshTrigger?: number, sessionId?: string, showAllTime?: boolean }) {
     const [players, setPlayers] = useState<Player[]>([]);

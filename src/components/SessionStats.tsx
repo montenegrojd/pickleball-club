@@ -14,8 +14,6 @@ interface QualityMetrics {
 interface Stats {
     gamesPlayedPerPlayer: { min: number; max: number; avg: number };
     uniquePartnersPerPlayer: { min: number; max: number; avg: number };
-    repeatedPartnerships: number;
-    totalPartnerships: number;
     avgWaitTime: number;
     maxWaitTime: number;
 }
@@ -41,12 +39,15 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
             setPlayers(pData);
             
             if (finishedMatches.length > 0) {
-                // Calculate metrics
-                const activePlayers = pData.filter((p: Player) => p.matchesPlayed > 0);
-                const playerCount = activePlayers.length || pData.length;
+                // Get unique players who actually played in these matches
+                const playersInMatches = new Set<string>();
+                finishedMatches.forEach(match => {
+                    [...match.team1, ...match.team2].forEach(id => playersInMatches.add(id));
+                });
+                const playerCount = playersInMatches.size;
                 
                 setQuality(calculateQualityMetrics(finishedMatches, playerCount));
-                setStats(calculateStats(finishedMatches, activePlayers.length > 0 ? activePlayers : pData));
+                setStats(calculateStats(finishedMatches, pData));
             }
         });
     }, [refreshTrigger, sessionId]);
@@ -146,28 +147,29 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
     };
 
     const calculateStats = (matches: Match[], players: Player[]): Stats => {
-        // Games played per player
-        const gamesPlayed = players.map(p => p.matchesPlayed);
+        // Games played per player - count from matches, not cumulative stats
+        const playerMatchCounts = new Map<string, number>();
+        matches.forEach(match => {
+            [...match.team1, ...match.team2].forEach(playerId => {
+                playerMatchCounts.set(playerId, (playerMatchCounts.get(playerId) || 0) + 1);
+            });
+        });
+
+        const gamesPlayed = players
+            .map(p => playerMatchCounts.get(p.id) || 0)
+            .filter(count => count > 0); // Only players who actually played
+        
         const gamesPlayedPerPlayer = gamesPlayed.length > 0 ? {
             min: Math.min(...gamesPlayed),
             max: Math.max(...gamesPlayed),
-            avg: gamesPlayed.reduce((a, b) => a + b, 0) / players.length
+            avg: gamesPlayed.reduce((a, b) => a + b, 0) / gamesPlayed.length
         } : { min: 0, max: 0, avg: 0 };
 
-        // Partner analysis
-        const partnershipCounts = new Map<string, number>();
-        matches.forEach(match => {
-            if (match.team1.length === 2) {
-                const key = [...match.team1].sort().join('-');
-                partnershipCounts.set(key, (partnershipCounts.get(key) || 0) + 1);
-            }
-            if (match.team2.length === 2) {
-                const key = [...match.team2].sort().join('-');
-                partnershipCounts.set(key, (partnershipCounts.get(key) || 0) + 1);
-            }
-        });
+        // Filter to only players who participated in these matches
+        const activePlayers = players.filter(p => playerMatchCounts.has(p.id));
 
-        const uniquePartnersPerPlayer = players.map(player => {
+        // Partner analysis
+        const uniquePartnersPerPlayer = activePlayers.map(player => {
             const partners = new Set<string>();
             matches.forEach(match => {
                 [match.team1, match.team2].forEach(team => {
@@ -181,11 +183,9 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
             return partners.size;
         });
 
-        const repeatedPartnerships = Array.from(partnershipCounts.values()).filter(count => count > 1).length;
-
         // Wait time analysis
         const waitTimes: number[] = [];
-        players.forEach(player => {
+        activePlayers.forEach(player => {
             const playerMatches = matches
                 .filter(m => [...m.team1, ...m.team2].includes(player.id))
                 .sort((a, b) => a.timestamp - b.timestamp);
@@ -201,10 +201,8 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
             uniquePartnersPerPlayer: uniquePartnersPerPlayer.length > 0 ? {
                 min: Math.min(...uniquePartnersPerPlayer),
                 max: Math.max(...uniquePartnersPerPlayer),
-                avg: uniquePartnersPerPlayer.reduce((a, b) => a + b, 0) / players.length
+                avg: uniquePartnersPerPlayer.reduce((a, b) => a + b, 0) / uniquePartnersPerPlayer.length
             } : { min: 0, max: 0, avg: 0 },
-            repeatedPartnerships,
-            totalPartnerships: partnershipCounts.size,
             avgWaitTime: waitTimes.length > 0 ? waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length : 0,
             maxWaitTime: waitTimes.length > 0 ? Math.max(...waitTimes) : 0
         };
@@ -255,15 +253,15 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
 
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex-1">
-                                    <div className="text-xs font-semibold text-gray-700">Winner Splitting</div>
-                                    <div className="text-xs text-gray-500">Winners split across teams</div>
+                                    <div className="text-xs font-semibold text-gray-700">Partnership Coverage</div>
+                                    <div className="text-xs text-gray-500">Unique partnerships explored</div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-600">
-                                        {quality.winnerSplitting.count}/{quality.winnerSplitting.total}
+                                        {quality.unusedPartnerships.used}/{quality.unusedPartnerships.total}
                                     </span>
-                                    <span className={`text-lg font-bold ${quality.winnerSplitting.percentage >= 75 ? 'text-emerald-600' : quality.winnerSplitting.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                        {quality.winnerSplitting.percentage.toFixed(0)}%
+                                    <span className={`text-lg font-bold ${quality.unusedPartnerships.percentage >= 75 ? 'text-emerald-600' : quality.unusedPartnerships.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                        {quality.unusedPartnerships.percentage.toFixed(0)}%
                                     </span>
                                 </div>
                             </div>
@@ -285,15 +283,15 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
 
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex-1">
-                                    <div className="text-xs font-semibold text-gray-700">Partnership Coverage</div>
-                                    <div className="text-xs text-gray-500">Unique partnerships explored</div>
+                                    <div className="text-xs font-semibold text-gray-700">Winner Splitting</div>
+                                    <div className="text-xs text-gray-500">Winners split across teams</div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-600">
-                                        {quality.unusedPartnerships.used}/{quality.unusedPartnerships.total}
+                                        {quality.winnerSplitting.count}/{quality.winnerSplitting.total}
                                     </span>
-                                    <span className={`text-lg font-bold ${quality.unusedPartnerships.percentage >= 75 ? 'text-emerald-600' : quality.unusedPartnerships.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                        {quality.unusedPartnerships.percentage.toFixed(0)}%
+                                    <span className={`text-lg font-bold ${quality.winnerSplitting.percentage >= 75 ? 'text-emerald-600' : quality.winnerSplitting.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                        {quality.winnerSplitting.percentage.toFixed(0)}%
                                     </span>
                                 </div>
                             </div>
@@ -309,7 +307,7 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                         <div className="space-y-3">
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <h4 className="text-xs font-semibold text-gray-600 mb-2">Games Played per Player</h4>
-                                <div className="grid grid-cols-3 gap-4 text-xs">
+                                <div className="grid grid-cols-2 gap-4 text-xs">
                                     <div>
                                         <span className="text-gray-500">Min:</span>
                                         <span className="ml-2 font-bold text-gray-800">{stats.gamesPlayedPerPlayer.min}</span>
@@ -318,16 +316,12 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                                         <span className="text-gray-500">Max:</span>
                                         <span className="ml-2 font-bold text-gray-800">{stats.gamesPlayedPerPlayer.max}</span>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-500">Avg:</span>
-                                        <span className="ml-2 font-bold text-gray-800">{stats.gamesPlayedPerPlayer.avg.toFixed(1)}</span>
-                                    </div>
                                 </div>
                             </div>
 
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <h4 className="text-xs font-semibold text-gray-600 mb-2">Unique Partners per Player</h4>
-                                <div className="grid grid-cols-3 gap-4 text-xs">
+                                <div className="grid grid-cols-2 gap-4 text-xs">
                                     <div>
                                         <span className="text-gray-500">Min:</span>
                                         <span className="ml-2 font-bold text-gray-800">{stats.uniquePartnersPerPlayer.min}</span>
@@ -336,21 +330,6 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                                         <span className="text-gray-500">Max:</span>
                                         <span className="ml-2 font-bold text-gray-800">{stats.uniquePartnersPerPlayer.max}</span>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-500">Avg:</span>
-                                        <span className="ml-2 font-bold text-gray-800">{stats.uniquePartnersPerPlayer.avg.toFixed(1)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                                <h4 className="text-xs font-semibold text-gray-600 mb-2">Partnership Repetition</h4>
-                                <div className="text-xs">
-                                    <span className="text-gray-500">Repeated:</span>
-                                    <span className="ml-2 font-bold text-gray-800">
-                                        {stats.repeatedPartnerships} / {stats.totalPartnerships}
-                                        {stats.totalPartnerships > 0 && ` (${((stats.repeatedPartnerships / stats.totalPartnerships) * 100).toFixed(1)}%)`}
-                                    </span>
                                 </div>
                             </div>
 

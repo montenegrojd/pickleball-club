@@ -24,17 +24,10 @@ interface PlayerStats {
 }
 
 export class Matchmaker {
-    // Scoring constants for rotation mode
-    private static readonly ROTATION_REPEAT_PENALTY = -100;
-    private static readonly ROTATION_WINNERS_SPLIT_BONUS = 200;
-    private static readonly ROTATION_WINNERS_TOGETHER_PENALTY = -300;
-    
-    // Scoring constants for strict-partners mode
-    private static readonly STRICT_REPEAT_PENALTY = -1000;
-    private static readonly STRICT_WINNERS_SPLIT_BONUS = 50;
-    private static readonly STRICT_WINNERS_TOGETHER_PENALTY = -75;
-    
-    // Partnership coverage bonus (applies to both modes)
+    // Scoring constants
+    private static readonly REPEAT_PENALTY = -100;
+    private static readonly WINNERS_SPLIT_BONUS = 200;
+    private static readonly WINNERS_TOGETHER_PENALTY = -300;
     private static readonly UNUSED_PARTNERSHIP_BONUS = 150;
     private static readonly BOTH_TEAMS_UNUSED_BONUS = 300; // Extra bonus when both teams are fresh
 
@@ -126,34 +119,6 @@ export class Matchmaker {
     }
 
     /**
-     * Helper: Sort players by rotation priority
-     * Priority: Not Fatigued > Longest bench time > Fewest games played
-     */
-    private static sortPlayersByRotationPriority(
-        playerIds: string[],
-        fatigued: Set<string>,
-        playerStats: Map<string, PlayerStats>
-    ): string[] {
-        return [...playerIds].sort((a, b) => {
-            const aFatigued = fatigued.has(a);
-            const bFatigued = fatigued.has(b);
-            
-            if (aFatigued !== bFatigued) {
-                return aFatigued ? 1 : -1;
-            }
-
-            const aStat = playerStats.get(a)!;
-            const bStat = playerStats.get(b)!;
-
-            if (aStat.lastPlayedIndex !== bStat.lastPlayedIndex) {
-                return bStat.lastPlayedIndex - aStat.lastPlayedIndex;
-            }
-
-            return aStat.gamesPlayed - bStat.gamesPlayed;
-        });
-    }
-
-    /**
      * Helper: Get winners from the last match
      */
     private static getLastMatchWinners(history: Match[]): string[] | null {
@@ -165,17 +130,6 @@ export class Matchmaker {
         if (!lastMatch || !lastMatch.winnerTeam) return null;
         
         return lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
-    }
-
-    /**
-     * Helper: Get winners that are available and not fatigued
-     */
-    private static getAvailableWinners(
-        winners: string[],
-        availablePlayerIds: string[],
-        fatigued: Set<string>
-    ): string[] {
-        return winners.filter(w => availablePlayerIds.includes(w) && !fatigued.has(w));
     }
 
     /**
@@ -201,49 +155,9 @@ export class Matchmaker {
     }
 
     /**
-     * Helper: Check if a configuration has any fresh (unused) partnerships
+     * Helper: Score a configuration
      */
-    private static hasFreshPartnerships(
-        config: { team1: string[], team2: string[] },
-        historicalTeams: Set<string>
-    ): boolean {
-        const { team1Key, team2Key } = this.getConfigurationTeamKeys(config);
-        return !historicalTeams.has(team1Key) && !historicalTeams.has(team2Key);
-    }
-
-    /**
-     * Helper: Calculate total possible partnerships for given player count
-     */
-    private static calculateTotalPossiblePartnerships(playerCount: number): number {
-        return (playerCount * (playerCount - 1)) / 2;
-    }
-
-    /**
-     * Helper: Get all unique partnerships from available players that haven't been used
-     */
-    private static getUnusedPartnerships(
-        availablePlayerIds: string[],
-        historicalTeams: Set<string>
-    ): Set<string> {
-        const unused = new Set<string>();
-        
-        // Generate all possible partnerships from available players
-        for (let i = 0; i < availablePlayerIds.length; i++) {
-            for (let j = i + 1; j < availablePlayerIds.length; j++) {
-                const teamKey = this.normalizeTeam(availablePlayerIds[i], availablePlayerIds[j]);
-                if (!historicalTeams.has(teamKey)) {
-                    unused.add(teamKey);
-                }
-            }
-        }
-        
-        return unused;
-    }
-
-    /**
-     * Helper: Score a configuration for rotation mode
-     */
-    private static scoreConfigurationForRotation(
+    private static scoreConfiguration(
         config: { team1: string[], team2: string[] },
         historicalTeams: Set<string>,
         selectedPlayers: string[],
@@ -253,8 +167,8 @@ export class Matchmaker {
         const { team1Key, team2Key } = this.getConfigurationTeamKeys(config);
 
         // Penalize repeated partnerships
-        if (historicalTeams.has(team1Key)) score += this.ROTATION_REPEAT_PENALTY;
-        if (historicalTeams.has(team2Key)) score += this.ROTATION_REPEAT_PENALTY;
+        if (historicalTeams.has(team1Key)) score += this.REPEAT_PENALTY;
+        if (historicalTeams.has(team2Key)) score += this.REPEAT_PENALTY;
 
         // Bonus for unused partnerships
         if (!historicalTeams.has(team1Key)) score += this.UNUSED_PARTNERSHIP_BONUS;
@@ -273,9 +187,9 @@ export class Matchmaker {
                 const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
                 
                 if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
-                    score += this.ROTATION_WINNERS_SPLIT_BONUS;
+                    score += this.WINNERS_SPLIT_BONUS;
                 } else {
-                    score += this.ROTATION_WINNERS_TOGETHER_PENALTY;
+                    score += this.WINNERS_TOGETHER_PENALTY;
                 }
             }
         }
@@ -284,115 +198,134 @@ export class Matchmaker {
     }
 
     /**
-     * Helper: Score a configuration for strict-partners mode
+     * Helper: Generate all possible 4-player combinations from available players
      */
-    private static scoreConfigurationForStrictPartners(
-        config: { team1: string[], team2: string[] },
-        historicalTeams: Set<string>,
-        selectedPlayers: string[],
-        winners: string[] | null
-    ): number {
-        let score = 0;
-        const { team1Key, team2Key } = this.getConfigurationTeamKeys(config);
-
-        // Heavy penalty for repeated partnerships (top priority)
-        if (historicalTeams.has(team1Key)) score += this.STRICT_REPEAT_PENALTY;
-        if (historicalTeams.has(team2Key)) score += this.STRICT_REPEAT_PENALTY;
-
-        // Bonus for unused partnerships (high priority)
-        if (!historicalTeams.has(team1Key)) score += this.UNUSED_PARTNERSHIP_BONUS;
-        if (!historicalTeams.has(team2Key)) score += this.UNUSED_PARTNERSHIP_BONUS;
+    private static generateAllPlayerCombinations(playerIds: string[]): string[][] {
+        const combinations: string[][] = [];
+        const n = playerIds.length;
         
-        // Extra bonus if both teams are fresh
-        if (!historicalTeams.has(team1Key) && !historicalTeams.has(team2Key)) {
-            score += this.BOTH_TEAMS_UNUSED_BONUS;
-        }
-
-        // Winner-splitting with lower priority than partnership variety
-        if (winners && winners.length === 2) {
-            const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
-
-            if (winnersInSelection.length === 2) {
-                const winnersTeamKey = this.normalizeTeam(winnersInSelection[0], winnersInSelection[1]);
-                
-                if (team1Key !== winnersTeamKey && team2Key !== winnersTeamKey) {
-                    score += this.STRICT_WINNERS_SPLIT_BONUS;
-                } else {
-                    score += this.STRICT_WINNERS_TOGETHER_PENALTY;
+        // Generate all C(n, 4) combinations
+        for (let i = 0; i < n - 3; i++) {
+            for (let j = i + 1; j < n - 2; j++) {
+                for (let k = j + 1; k < n - 1; k++) {
+                    for (let l = k + 1; l < n; l++) {
+                        combinations.push([playerIds[i], playerIds[j], playerIds[k], playerIds[l]]);
+                    }
                 }
             }
         }
-
-        return score;
+        
+        return combinations;
     }
 
     /**
-     * Helper: Select players for strict-partners mode
-     * Tries to keep winners on court if it doesn't create repeated partnerships
+     * Helper: Check if a 4-player combination has potential for fresh partnerships
+     * Returns true if at least one of the 3 possible team configurations would have a fresh partnership
      */
-    private static selectPlayersForStrictPartners(
+    private static combinationHasFreshPotential(
+        combo: string[],
+        historicalTeams: Set<string>
+    ): boolean {
+        const configs = this.generateAllConfigurations(combo);
+        
+        // Check if any configuration has at least one fresh partnership
+        return configs.some(config => {
+            const { team1Key, team2Key } = this.getConfigurationTeamKeys(config);
+            return !historicalTeams.has(team1Key) || !historicalTeams.has(team2Key);
+        });
+    }
+
+    /**
+     * Helper: Score a 4-player combination based on fairness metrics
+     * Higher score = fairer combination
+     */
+    private static scoreCombination(
+        combo: string[],
+        fatigued: Set<string>,
+        playerStats: Map<string, PlayerStats>
+    ): { score: number; breakdown: { fatigueCount: number; totalWaitTime: number; totalGames: number } } {
+        // Count fatigued players (fewer is better)
+        const fatigueCount = combo.filter(id => fatigued.has(id)).length;
+        
+        // Sum of wait times (higher is better - players who waited longer)
+        const totalWaitTime = combo.reduce((sum, id) => {
+            const stat = playerStats.get(id);
+            return sum + (stat?.lastPlayedIndex ?? 0);
+        }, 0);
+        
+        // Sum of games played (lower is better - balance game counts)
+        const totalGames = combo.reduce((sum, id) => {
+            const stat = playerStats.get(id);
+            return sum + (stat?.gamesPlayed ?? 0);
+        }, 0);
+        
+        // Calculate composite score
+        // Prioritize: no fatigue > long wait > few games
+        const score = 
+            (4 - fatigueCount) * 1000 +  // Very high weight for avoiding fatigue
+            totalWaitTime * 100 -         // High weight for wait time
+            totalGames * 10;              // Lower weight for game balance
+        
+        return {
+            score,
+            breakdown: { fatigueCount, totalWaitTime, totalGames }
+        };
+    }
+
+    /**
+     * Helper: Select best 4-player combination
+     * Prioritizes combinations with fresh partnership potential, then fairness
+     */
+    private static selectBestCombination(
         availablePlayerIds: string[],
-        winners: string[] | null,
         fatigued: Set<string>,
         playerStats: Map<string, PlayerStats>,
         historicalTeams: Set<string>
-    ): string[] {
-        if (!winners || winners.length !== 2) {
-            // No winners to prioritize, use standard rotation
-            return this.sortPlayersByRotationPriority(availablePlayerIds, fatigued, playerStats).slice(0, 4);
+    ): string[] | null {
+        // If exactly 4 players, no choice
+        if (availablePlayerIds.length === 4) {
+            return availablePlayerIds;
         }
-
-        const availableWinners = this.getAvailableWinners(winners, availablePlayerIds, fatigued);
         
-        if (availableWinners.length !== 2) {
-            // Not all winners available or some are fatigued, use standard rotation
-            return this.sortPlayersByRotationPriority(availablePlayerIds, fatigued, playerStats).slice(0, 4);
-        }
-
-        // Both winners are available and not fatigued
-        // Select 2 more players using rotation logic
-        const otherPlayers = this.sortPlayersByRotationPriority(
-            availablePlayerIds.filter(id => !availableWinners.includes(id)),
-            fatigued,
-            playerStats
+        // Generate all possible 4-player combinations
+        const allCombinations = this.generateAllPlayerCombinations(availablePlayerIds);
+        
+        // Filter out combinations with fatigued players if non-fatigued options exist
+        const nonFatiguedCombinations = allCombinations.filter(combo =>
+            combo.every(playerId => !fatigued.has(playerId))
         );
         
-        const candidateWithWinners = [...availableWinners, ...otherPlayers.slice(0, 2)];
+        // Use non-fatigued combinations if available, otherwise use all combinations
+        const candidatesByFatigue = nonFatiguedCombinations.length > 0 ? nonFatiguedCombinations : allCombinations;
         
-        // Check if any configuration with winners would avoid all repeated partnerships
-        const testConfigs = this.generateAllConfigurations(candidateWithWinners);
-        const hasFreshConfig = testConfigs.some(config => this.hasFreshPartnerships(config, historicalTeams));
+        // Filter to combinations with fresh partnership potential
+        const freshCombinations = candidatesByFatigue.filter(combo => 
+            this.combinationHasFreshPotential(combo, historicalTeams)
+        );
         
-        if (hasFreshConfig) {
-            // Keep winners - at least one config has both teams fresh
-            return candidateWithWinners;
-        } else {
-            // Would create repeated partnerships - use standard rotation instead
-            return this.sortPlayersByRotationPriority(availablePlayerIds, fatigued, playerStats).slice(0, 4);
-        }
-    }
-
-    /**
-     * Helper: Select players for rotation mode
-     * Uses standard rotation logic: Not Fatigued > Longest bench time > Fewest games played
-     */
-    private static selectPlayersForRotation(
-        availablePlayerIds: string[],
-        fatigued: Set<string>,
-        playerStats: Map<string, PlayerStats>
-    ): string[] {
-        return this.sortPlayersByRotationPriority(availablePlayerIds, fatigued, playerStats).slice(0, 4);
+        // Use fresh combinations if available, otherwise use all fatigue-filtered combinations
+        const candidateCombinations = freshCombinations.length > 0 ? freshCombinations : candidatesByFatigue;
+        
+        // Score all candidate combinations
+        const scoredCombinations = candidateCombinations.map(combo => ({
+            combo,
+            ...this.scoreCombination(combo, fatigued, playerStats)
+        }));
+        
+        // Sort by score (highest first)
+        scoredCombinations.sort((a, b) => b.score - a.score);
+        
+        // Return best combination
+        return scoredCombinations.length > 0 ? scoredCombinations[0].combo : null;
     }
 
     /**
      * Main matchmaking algorithm
-     * @param mode - 'rotation' for balanced play, 'strict-partners' to avoid partner repetition
      */
     static proposeMatch(
         availablePlayerIds: string[],
         history: Match[],
-        playerNames?: Map<string, string>,
-        mode: 'rotation' | 'strict-partners' = 'rotation'
+        playerNames?: Map<string, string>
     ): MatchProposal | null {
         if (availablePlayerIds.length < 4) return null;
 
@@ -402,22 +335,18 @@ export class Matchmaker {
         const historicalTeams = this.getHistoricalTeams(history);
         const winners = this.getLastMatchWinners(history);
 
-        // 2. Select 4 players based on mode
-        const selectedPlayers = mode === 'strict-partners'
-            ? this.selectPlayersForStrictPartners(availablePlayerIds, winners, fatigued, playerStats, historicalTeams)
-            : this.selectPlayersForRotation(availablePlayerIds, fatigued, playerStats);
+        // 2. Select best 4-player combination (prioritizes fresh partnerships + fairness)
+        const selectedPlayers = this.selectBestCombination(availablePlayerIds, fatigued, playerStats, historicalTeams);
 
-        if (selectedPlayers.length < 4) return null;
+        if (!selectedPlayers || selectedPlayers.length < 4) return null;
 
         // 3. Generate all possible team configurations
         const configs = this.generateAllConfigurations(selectedPlayers);
 
-        // 4. Score each configuration based on mode
+        // 4. Score each configuration
         const scoredConfigs = configs.map(config => ({
             config,
-            score: mode === 'strict-partners'
-                ? this.scoreConfigurationForStrictPartners(config, historicalTeams, selectedPlayers, winners)
-                : this.scoreConfigurationForRotation(config, historicalTeams, selectedPlayers, winners)
+            score: this.scoreConfiguration(config, historicalTeams, selectedPlayers, winners)
         }));
 
         // 5. Select best configuration
@@ -425,8 +354,8 @@ export class Matchmaker {
         const bestConfig = scoredConfigs[0].config;
 
         // 6. Generate reason and analytics
-        const reasonData = this.generateReason(scoredConfigs, historicalTeams, fatigued, playerNames, mode);
-        const analytics = this.generateAnalytics(history, bestConfig, selectedPlayers, historicalTeams, fatigued, mode);
+        const reasonData = this.generateReason(scoredConfigs, historicalTeams, fatigued, playerNames);
+        const analytics = this.generateAnalytics(history, bestConfig, selectedPlayers, historicalTeams, fatigued);
 
         return {
             team1: bestConfig.team1,
@@ -446,8 +375,7 @@ export class Matchmaker {
         proposal: { team1: string[], team2: string[] },
         selectedPlayers: string[],
         historicalTeams: Set<string>,
-        fatigued: Set<string>,
-        mode: 'rotation' | 'strict-partners' = 'rotation'
+        fatigued: Set<string>
     ): MatchAnalytics {
         const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
         const lastMatch = sortedHistory[0];
@@ -500,8 +428,7 @@ export class Matchmaker {
         scoredConfigs: Array<{ config: { team1: string[], team2: string[] }, score: number }>,
         historicalTeams: Set<string>,
         fatigued: Set<string>,
-        playerNames?: Map<string, string>,
-        mode: 'rotation' | 'strict-partners' = 'rotation'
+        playerNames?: Map<string, string>
     ): { main: string; breakdown: string[]; combined: string } {
         const reasons: string[] = [];
         const bestConfig = scoredConfigs[0].config;
@@ -513,11 +440,9 @@ export class Matchmaker {
         const team2IsNew = !historicalTeams.has(team2Key);
 
         if (team1IsNew && team2IsNew) {
-            reasons.push(mode === 'strict-partners' ? "Fresh partnerships" : "Fresh team pairings");
+            reasons.push("Fresh team pairings");
         } else if (team1IsNew || team2IsNew) {
-            reasons.push(mode === 'strict-partners' ? "One new partnership" : "One new team pairing");
-        } else if (mode === 'strict-partners') {
-            reasons.push("Best partnership variety available");
+            reasons.push("One new team pairing");
         }
 
         const allPlayers = [...bestConfig.team1, ...bestConfig.team2];

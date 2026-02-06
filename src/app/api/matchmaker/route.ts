@@ -6,7 +6,7 @@ import { Match, Player } from '@/lib/types';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const mode = searchParams.get('mode') || 'rotation'; // 'rotation', 'strict-partners', or 'playoff'
+    const mode = searchParams.get('mode') || 'rotation'; // 'rotation' or 'playoff'
 
     const session = await db.getActiveSession();
     if (!session) return NextResponse.json({ error: 'No session' }, { status: 400 });
@@ -71,8 +71,8 @@ export async function GET(request: Request) {
         const playerStats = Array.from(statsMap.values());
         proposal = Matchmaker.proposePlayoffMatch(availablePlayers, sessionMatches, playerStats, playerNames);
     } else {
-        // Rotation or strict-partners mode
-        proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches, playerNames, mode as 'rotation' | 'strict-partners');
+        // Regular rotation mode
+        proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches, playerNames);
     }
 
     return NextResponse.json(proposal);
