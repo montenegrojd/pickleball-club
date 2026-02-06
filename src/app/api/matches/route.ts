@@ -7,12 +7,16 @@ import { v4 as uuidv4 } from 'uuid';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
+    const showAllTime = searchParams.get('range') === 'all';
 
     let matches: Match[];
     
     if (sessionId) {
         // Get matches for specific session
         matches = await db.getMatchesBySessionId(sessionId);
+    } else if (showAllTime) {
+        // Get all matches across all sessions
+        matches = await db.getMatches();
     } else {
         // Get matches for active session
         const activeSession = await db.getActiveSession();

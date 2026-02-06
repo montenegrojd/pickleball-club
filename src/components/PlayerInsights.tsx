@@ -36,7 +36,7 @@ export default function PlayerInsights({ refreshTrigger, sessionId, showAllTime 
         
         const matchesUrl = sessionId
             ? `/api/matches?sessionId=${sessionId}`
-            : `/api/matches`;
+            : showAllTime ? `/api/matches?range=all` : `/api/matches`;
         
         Promise.all([
             fetch(statsUrl).then(res => res.json()),
