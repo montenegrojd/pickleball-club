@@ -112,6 +112,11 @@ export default function SimulatorPage() {
             const availablePlayers = players.map(p => p.id);
             const proposal = Matchmaker.proposeMatch(availablePlayers, matches, playerMap);
 
+            if (!proposal) {
+                console.warn(`Could not generate match ${i + 1}`);
+                break;
+            }
+
             // Analyze the match decision
             const analytics = analyzeMatchDecision(matches, proposal, availablePlayers, players);
 
