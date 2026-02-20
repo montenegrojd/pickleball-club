@@ -58,8 +58,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         fetchData();
     }, [refreshTrigger]);
 
-    const generateMatch = async () => {
-        setLoading(true);
+    const createMatch = async () => {
         const res = await fetch(`/api/matchmaker?mode=${matchMode}`);
         const proposal = await res.json();
 
@@ -70,11 +69,10 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                 setShowAnalytics(true);
             }
 
-            // Determine next court number
-            // Simple logic: max current court + 1, or just length + 1 if we assume linear
-            // Let's use 1-based index from current active count for simplicity, or try to fill gaps? 
-            // Simplest: Active count + 1.
-            const courtNum = activeMatches.length + 1;
+            const matchesResponse = await fetch('/api/matches');
+            const matches: Match[] = await matchesResponse.json();
+            const activeCount = matches.filter(m => !m.isFinished).length;
+            const courtNum = activeCount + 1;
 
             await fetch('/api/matches', {
                 method: 'POST',
@@ -86,6 +84,17 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     courtNumber: courtNum
                 })
             });
+            return true;
+        }
+
+        return false;
+    };
+
+    const generateMatch = async () => {
+        setLoading(true);
+        const created = await createMatch();
+
+        if (created) {
             await fetchData();
             onUpdate();
         } else {
@@ -94,7 +103,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         setLoading(false);
     };
 
-    const finishMatch = async (match: Match) => {
+    const finishMatch = async (match: Match, startNextMatch = false) => {
         const scores = matchesScores[match.id];
         if (!scores) return;
 
@@ -125,6 +134,13 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             delete next[match.id];
             return next;
         });
+
+        if (startNextMatch) {
+            const created = await createMatch();
+            if (!created) {
+                alert("Match finished, but we couldn't start the next match automatically.");
+            }
+        }
 
         await fetchData();
         onUpdate();
@@ -341,21 +357,20 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                         </div>
                                     </div>
                                 </div>
-
-
                                 <div className="mt-6 flex gap-2">
                                     <button
                                         onClick={() => cancelMatch(match)}
+                                        disabled={loading}
                                         className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 text-sm"
                                     >
                                         Cancel Match
                                     </button>
                                     <button
-                                        onClick={() => finishMatch(match)}
-                                        className="flex-1 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 flex items-center justify-center gap-2 text-sm"
+                                        onClick={() => finishMatch(match, true)}
+                                        disabled={loading}
+                                        className="flex-1 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 flex items-center justify-center gap-2 text-sm disabled:opacity-50"
                                     >
-                                        <CheckCircle className="w-4 h-4" />
-                                        Finish Match
+                                        Finish & Start Match
                                     </button>
                                 </div>
                             </div>

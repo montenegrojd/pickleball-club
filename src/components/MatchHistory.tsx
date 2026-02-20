@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
-import { Clock, Edit2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Edit2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { refreshTrigger: number, onUpdate: () => void, sessionId?: string }) {
     const [matches, setMatches] = useState<Match[]>([]);
@@ -11,6 +11,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editScores, setEditScores] = useState({ s1: '', s2: '' });
     const [isExpanded, setIsExpanded] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const matchesUrl = sessionId 
@@ -88,6 +89,40 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
 
     const finishedMatches = matches.filter(m => m.isFinished);
 
+    const exportMatchHistory = async () => {
+        if (!sessionId) {
+            alert('Session export requires a session ID.');
+            return;
+        }
+
+        setIsExporting(true);
+        try {
+            const response = await fetch(`/api/session/${sessionId}/export`);
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                alert(data.error || 'Failed to export match history');
+                return;
+            }
+
+            const blob = await response.blob();
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filenameMatch = contentDisposition?.match(/filename="?([^\"]+)"?/i);
+            const filename = filenameMatch?.[1] || `session-${sessionId}-match-history.csv`;
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
             <div
@@ -98,9 +133,22 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
                     <Clock className="w-5 h-5" />
                     <h2 className="font-bold text-lg text-gray-800">Match History ({finishedMatches.length})</h2>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 md:hidden">
-                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            exportMatchHistory();
+                        }}
+                        disabled={isExporting || !sessionId}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                        {isExporting ? 'Exporting...' : 'Export CSV'}
+                    </button>
+                    <button className="text-gray-400 hover:text-gray-600 md:hidden">
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </button>
+                </div>
             </div>
 
             {isExpanded && (

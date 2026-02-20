@@ -239,7 +239,7 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex-1">
                                     <div className="text-xs font-semibold text-gray-700">Fatigue Management</div>
-                                    <div className="text-xs text-gray-500">No back-to-back games</div>
+                                    <div className="text-xs text-gray-500">No three games in a row</div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-600">

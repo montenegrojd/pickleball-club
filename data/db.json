@@ -3,34 +3,34 @@
     {
       "id": "player-1",
       "name": "Javier",
-      "matchesPlayed": 19,
-      "matchesWon": 6,
-      "pointsScored": 129,
-      "pointsAllowed": 152
+      "matchesPlayed": 20,
+      "matchesWon": 7,
+      "pointsScored": 140,
+      "pointsAllowed": 157
     },
     {
       "id": "player-2",
       "name": "Diego",
-      "matchesPlayed": 17,
+      "matchesPlayed": 18,
       "matchesWon": 11,
-      "pointsScored": 135,
-      "pointsAllowed": 118
+      "pointsScored": 140,
+      "pointsAllowed": 129
     },
     {
       "id": "player-3",
       "name": "Sebas",
-      "matchesPlayed": 19,
+      "matchesPlayed": 21,
       "matchesWon": 10,
-      "pointsScored": 134,
-      "pointsAllowed": 148
+      "pointsScored": 149,
+      "pointsAllowed": 171
     },
     {
       "id": "player-4",
       "name": "Horacio",
-      "matchesPlayed": 19,
+      "matchesPlayed": 20,
       "matchesWon": 11,
-      "pointsScored": 155,
-      "pointsAllowed": 128
+      "pointsScored": 165,
+      "pointsAllowed": 140
     },
     {
       "id": "player-5",
@@ -43,18 +43,18 @@
     {
       "id": "player-6",
       "name": "Jorge",
-      "matchesPlayed": 15,
-      "matchesWon": 6,
-      "pointsScored": 115,
-      "pointsAllowed": 121
+      "matchesPlayed": 16,
+      "matchesWon": 7,
+      "pointsScored": 127,
+      "pointsAllowed": 131
     },
     {
       "id": "player-7",
       "name": "Xavi",
-      "matchesPlayed": 6,
-      "matchesWon": 4,
-      "pointsScored": 40,
-      "pointsAllowed": 36
+      "matchesPlayed": 8,
+      "matchesWon": 6,
+      "pointsScored": 63,
+      "pointsAllowed": 51
     },
     {
       "id": "player-8",
@@ -625,9 +625,32 @@
         "player-6",
         "player-7"
       ],
-      "isFinished": false,
+      "isFinished": true,
       "timestamp": 1770411956944,
-      "courtNumber": 1
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 10,
+      "score2": 12,
+      "winnerTeam": 2
+    },
+    {
+      "id": "6894ad4b-66c6-407b-85d6-130fd2f3e7e5",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-3",
+        "player-2"
+      ],
+      "team2": [
+        "player-1",
+        "player-7"
+      ],
+      "isFinished": true,
+      "timestamp": 1771616683189,
+      "courtNumber": 1,
+      "isLocked": false,
+      "score1": 5,
+      "score2": 11,
+      "winnerTeam": 2
     }
   ],
   "sessions": [
