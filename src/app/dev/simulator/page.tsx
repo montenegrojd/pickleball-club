@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Play, RotateCcw, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { Matchmaker } from '@/lib/matchmaker';
 import { Match, Player } from '@/lib/types';
@@ -43,11 +43,41 @@ interface SimulationStats {
     maxWaitTime: number;
 }
 
+interface AdvancedMetrics {
+    fatigue: {
+        matchesWithBackToBackPlayers: number;
+        matchesWithThreeInRowPlayers: number;
+        noBackToBackRate: number;
+        noThreeInRowRate: number;
+        maxConsecutiveGames: number;
+        maxConsecutivePlayerNames: string[];
+    };
+    proposal: {
+        bothTeamsFreshCount: number;
+        oneFreshTeamCount: number;
+        noFreshTeamsCount: number;
+        winnerSplitOpportunities: number;
+        winnerSplitSuccessRate: number;
+    };
+}
+
+interface SessionSummary {
+    id: string;
+    startDate: string;
+    isActive: boolean;
+    isClosed?: boolean;
+    matchCount: number;
+    playerCount: number;
+}
+
 interface SimulationResult {
     matches: EnhancedMatch[];
     players: SimulationPlayer[];
     stats: SimulationStats;
     quality: QualityMetrics;
+    advanced: AdvancedMetrics;
+    source: 'simulation' | 'session';
+    title: string;
 }
 
 export default function SimulatorPage() {
@@ -57,8 +87,25 @@ export default function SimulatorPage() {
     });
     
     const [isRunning, setIsRunning] = useState(false);
+    const [isAnalyzingSession, setIsAnalyzingSession] = useState(false);
     const [results, setResults] = useState<SimulationResult[]>([]);
     const [expandedMatches, setExpandedMatches] = useState<Set<string>>(new Set());
+    const [sessions, setSessions] = useState<SessionSummary[]>([]);
+    const [selectedSessionId, setSelectedSessionId] = useState('');
+
+    useEffect(() => {
+        const fetchSessions = async () => {
+            const response = await fetch('/api/sessions');
+            if (!response.ok) return;
+            const data: SessionSummary[] = await response.json();
+            setSessions(data);
+            if (data.length > 0) {
+                setSelectedSessionId(data[0].id);
+            }
+        };
+
+        fetchSessions();
+    }, []);
 
     const toggleMatchExpanded = (matchId: string) => {
         const newExpanded = new Set(expandedMatches);
@@ -104,8 +151,7 @@ export default function SimulatorPage() {
         const playerMap = new Map(players.map(p => [p.id, p.name]));
         let matchCounter = 0;
 
-        // Track when each player last played for wait time calculation
-        const lastPlayedTime = new Map<string, number>();
+        // Track historical team usage during simulation
         const historicalTeams = new Set<string>();
 
         for (let i = 0; i < config.matchCount; i++) {
@@ -118,7 +164,7 @@ export default function SimulatorPage() {
             }
 
             // Analyze the match decision
-            const analytics = analyzeMatchDecision(matches, proposal, availablePlayers, players);
+            const analytics = analyzeMatchDecision(matches, proposal);
 
             // Calculate team skills (average of both players)
             const team1Skill = proposal.team1.reduce((sum, id) => {
@@ -177,27 +223,97 @@ export default function SimulatorPage() {
                 player.pointsScored = (player.pointsScored || 0) + (isTeam1 ? score1 : score2);
                 player.pointsAllowed = (player.pointsAllowed || 0) + (isTeam1 ? score2 : score1);
 
-                lastPlayedTime.set(playerId, match.timestamp);
             });
         }
 
         // Calculate statistics and quality metrics
-        const stats = calculateStats(players, matches, lastPlayedTime);
+        const stats = calculateStats(players, matches);
         const quality = calculateQualityMetrics(matches, players.length);
+        const advanced = calculateAdvancedMetrics(matches, players);
 
         return {
             matches,
             players,
             stats,
-            quality
+            quality,
+            advanced,
+            source: 'simulation',
+            title: 'Simulation Results'
         };
+    };
+
+    const runExistingSessionAnalysis = async () => {
+        if (!selectedSessionId) {
+            alert('Please select a session to analyze.');
+            return;
+        }
+
+        setIsAnalyzingSession(true);
+        try {
+            const [sessionRes, matchesRes, playersRes] = await Promise.all([
+                fetch(`/api/session?id=${selectedSessionId}`),
+                fetch(`/api/matches?sessionId=${selectedSessionId}`),
+                fetch('/api/players')
+            ]);
+
+            if (!sessionRes.ok || !matchesRes.ok || !playersRes.ok) {
+                alert('Unable to load session data for analysis.');
+                return;
+            }
+
+            const session = await sessionRes.json();
+            const allMatches: Match[] = await matchesRes.json();
+            const allPlayers: Player[] = await playersRes.json();
+
+            const finishedMatches = allMatches
+                .filter(match => match.isFinished)
+                .sort((a, b) => a.timestamp - b.timestamp);
+
+            if (finishedMatches.length === 0) {
+                alert('This session has no finished matches to analyze.');
+                return;
+            }
+
+            const playersInSession = allPlayers
+                .filter(player => session.playerIds?.includes(player.id))
+                .map(player => ({
+                    ...player,
+                    skill: 0.5
+                }));
+
+            const sessionPlayers = playersInSession.length > 0
+                ? playersInSession
+                : allPlayers
+                    .filter(player => finishedMatches.some(match => [...match.team1, ...match.team2].includes(player.id)))
+                    .map(player => ({ ...player, skill: 0.5 }));
+
+            const enhancedMatches: EnhancedMatch[] = finishedMatches.map((match, index) => ({
+                ...match,
+                analytics: analyzeHistoricalMatchDecision(finishedMatches.slice(0, index), match)
+            }));
+
+            const stats = calculateStats(sessionPlayers, enhancedMatches);
+            const quality = calculateQualityMetrics(enhancedMatches, sessionPlayers.length);
+            const advanced = calculateAdvancedMetrics(enhancedMatches, sessionPlayers);
+
+            setExpandedMatches(new Set());
+            setResults([{
+                matches: enhancedMatches,
+                players: sessionPlayers,
+                stats,
+                quality,
+                advanced,
+                source: 'session',
+                title: `Session Analysis (${new Date(session.startDate).toLocaleDateString()})`
+            }]);
+        } finally {
+            setIsAnalyzingSession(false);
+        }
     };
 
     const analyzeMatchDecision = (
         history: EnhancedMatch[],
-        proposal: { team1: string[], team2: string[] },
-        availablePlayers: string[],
-        players: SimulationPlayer[]
+        proposal: { team1: string[], team2: string[] }
     ): MatchAnalytics => {
         const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
         const lastMatch = sortedHistory[0];
@@ -336,8 +452,7 @@ export default function SimulatorPage() {
 
     const calculateStats = (
         players: SimulationPlayer[],
-        matches: Match[],
-        lastPlayedTime: Map<string, number>
+        matches: Match[]
     ): SimulationStats => {
         // Games played per player
         const gamesPlayed = players.map(p => p.matchesPlayed);
@@ -405,6 +520,145 @@ export default function SimulatorPage() {
         };
     };
 
+    const analyzeHistoricalMatchDecision = (
+        history: Match[],
+        currentMatch: Match
+    ): MatchAnalytics => {
+        const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
+        const lastMatch = sortedHistory[0];
+        const secondLastMatch = sortedHistory[1];
+
+        const hadFatiguedPlayers: string[] = [];
+        if (lastMatch && secondLastMatch) {
+            const lastPlayers = [...lastMatch.team1, ...lastMatch.team2];
+            const secondLastPlayers = [...secondLastMatch.team1, ...secondLastMatch.team2];
+            const selectedPlayers = [...currentMatch.team1, ...currentMatch.team2];
+
+            selectedPlayers.forEach(id => {
+                if (lastPlayers.includes(id) && secondLastPlayers.includes(id)) {
+                    hadFatiguedPlayers.push(id);
+                }
+            });
+        }
+
+        let winnersWereSplit: boolean | null = null;
+        let keptWinners = false;
+        if (lastMatch && lastMatch.winnerTeam) {
+            const winners = lastMatch.winnerTeam === 1 ? lastMatch.team1 : lastMatch.team2;
+            const selectedPlayers = [...currentMatch.team1, ...currentMatch.team2];
+            const winnersInSelection = winners.filter(w => selectedPlayers.includes(w));
+
+            if (winnersInSelection.length === 2) {
+                const winnersKey = winnersInSelection.sort().join('-');
+                const team1Key = [...currentMatch.team1].sort().join('-');
+                const team2Key = [...currentMatch.team2].sort().join('-');
+                winnersWereSplit = (team1Key !== winnersKey && team2Key !== winnersKey);
+                keptWinners = true;
+            }
+        }
+
+        const repeatedPartnerships: Array<{ player1: string, player2: string }> = [];
+        const historicalTeams = new Set<string>();
+        history.forEach(match => {
+            if (match.team1.length === 2) historicalTeams.add([...match.team1].sort().join('-'));
+            if (match.team2.length === 2) historicalTeams.add([...match.team2].sort().join('-'));
+        });
+
+        const team1Key = [...currentMatch.team1].sort().join('-');
+        const team2Key = [...currentMatch.team2].sort().join('-');
+
+        if (historicalTeams.has(team1Key)) {
+            const sorted = [...currentMatch.team1].sort();
+            repeatedPartnerships.push({ player1: sorted[0], player2: sorted[1] });
+        }
+        if (historicalTeams.has(team2Key)) {
+            const sorted = [...currentMatch.team2].sort();
+            repeatedPartnerships.push({ player1: sorted[0], player2: sorted[1] });
+        }
+
+        return {
+            hadFatiguedPlayers,
+            winnersWereSplit,
+            repeatedPartnerships,
+            selectedPlayers: [...currentMatch.team1, ...currentMatch.team2],
+            keptWinners
+        };
+    };
+
+    const calculateAdvancedMetrics = (matches: EnhancedMatch[], players: SimulationPlayer[]): AdvancedMetrics => {
+        const sortedMatches = [...matches].sort((a, b) => a.timestamp - b.timestamp);
+        const allPlayerIds = players.map(player => player.id);
+        const streakByPlayer = new Map(allPlayerIds.map(id => [id, 0]));
+        const maxStreakByPlayer = new Map(allPlayerIds.map(id => [id, 0]));
+
+        let matchesWithBackToBackPlayers = 0;
+        let matchesWithThreeInRowPlayers = 0;
+        let previousPlayers = new Set<string>();
+
+        sortedMatches.forEach(match => {
+            const currentPlayers = new Set([...match.team1, ...match.team2]);
+            let hasBackToBack = false;
+            let hasThreeInRow = false;
+
+            allPlayerIds.forEach(playerId => {
+                if (currentPlayers.has(playerId)) {
+                    const nextStreak = previousPlayers.has(playerId)
+                        ? (streakByPlayer.get(playerId) || 0) + 1
+                        : 1;
+
+                    streakByPlayer.set(playerId, nextStreak);
+                    maxStreakByPlayer.set(playerId, Math.max(maxStreakByPlayer.get(playerId) || 0, nextStreak));
+
+                    if (nextStreak >= 2) hasBackToBack = true;
+                    if (nextStreak >= 3) hasThreeInRow = true;
+                } else {
+                    streakByPlayer.set(playerId, 0);
+                }
+            });
+
+            if (hasBackToBack) matchesWithBackToBackPlayers++;
+            if (hasThreeInRow) matchesWithThreeInRowPlayers++;
+
+            previousPlayers = currentPlayers;
+        });
+
+        const maxConsecutiveGames = Math.max(0, ...Array.from(maxStreakByPlayer.values()));
+        const maxConsecutivePlayerNames = players
+            .filter(player => (maxStreakByPlayer.get(player.id) || 0) === maxConsecutiveGames && maxConsecutiveGames > 0)
+            .map(player => player.name);
+
+        const bothTeamsFreshCount = matches.filter(match => match.analytics.repeatedPartnerships.length === 0).length;
+        const oneFreshTeamCount = matches.filter(match => match.analytics.repeatedPartnerships.length === 1).length;
+        const noFreshTeamsCount = matches.filter(match => match.analytics.repeatedPartnerships.length >= 2).length;
+
+        const winnerSplitOpportunities = matches.filter(match => match.analytics.winnersWereSplit !== null).length;
+        const winnerSplitSuccessCount = matches.filter(match => match.analytics.winnersWereSplit === true).length;
+
+        return {
+            fatigue: {
+                matchesWithBackToBackPlayers,
+                matchesWithThreeInRowPlayers,
+                noBackToBackRate: matches.length > 0
+                    ? ((matches.length - matchesWithBackToBackPlayers) / matches.length) * 100
+                    : 0,
+                noThreeInRowRate: matches.length > 0
+                    ? ((matches.length - matchesWithThreeInRowPlayers) / matches.length) * 100
+                    : 0,
+                maxConsecutiveGames,
+                maxConsecutivePlayerNames
+            },
+            proposal: {
+                bothTeamsFreshCount,
+                oneFreshTeamCount,
+                noFreshTeamsCount,
+                winnerSplitOpportunities,
+                winnerSplitSuccessRate: winnerSplitOpportunities > 0
+                    ? (winnerSplitSuccessCount / winnerSplitOpportunities) * 100
+                    : 0
+            }
+        };
+    };
+
     const handleRunSimulation = () => {
         setIsRunning(true);
         
@@ -451,7 +705,7 @@ export default function SimulatorPage() {
                                 max="16"
                                 value={config.playerCount}
                                 onChange={(e) => setConfig({ ...config, playerCount: parseInt(e.target.value) })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                         </div>
 
@@ -466,7 +720,7 @@ export default function SimulatorPage() {
                                 max="100"
                                 value={config.matchCount}
                                 onChange={(e) => setConfig({ ...config, matchCount: parseInt(e.target.value) })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                         </div>
                     </div>
@@ -492,6 +746,36 @@ export default function SimulatorPage() {
                             </button>
                         )}
                     </div>
+
+                    <div className="border-t border-gray-100 mt-6 pt-6">
+                        <h3 className="text-sm font-bold text-gray-700 mb-3">Analyze Existing Session</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Session
+                                </label>
+                                <select
+                                    value={selectedSessionId}
+                                    onChange={(e) => setSelectedSessionId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                                    {sessions.map(session => (
+                                        <option key={session.id} value={session.id}>
+                                            {new Date(session.startDate).toLocaleString()} · {session.matchCount} matches · {session.playerCount} players
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={runExistingSessionAnalysis}
+                                disabled={isAnalyzingSession || !selectedSessionId}
+                                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Play className="w-4 h-4" />
+                                {isAnalyzingSession ? 'Analyzing...' : 'Analyze Session'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Results */}
@@ -502,7 +786,7 @@ export default function SimulatorPage() {
                                 {/* Results Header */}
                                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                                     <h3 className="text-lg font-bold text-gray-800">
-                                        Simulation Results
+                                        {result.title}
                                     </h3>
                                 </div>
 
@@ -572,6 +856,39 @@ export default function SimulatorPage() {
                                                 <span className={`text-lg font-bold ${result.quality.unusedPartnerships.percentage >= 75 ? 'text-emerald-600' : result.quality.unusedPartnerships.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                                                     {result.quality.unusedPartnerships.percentage.toFixed(0)}%
                                                 </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Advanced Metrics */}
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4">Advanced Metrics</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Fatigue Depth</h4>
+                                            <div className="space-y-1 text-sm text-gray-600">
+                                                <div>No back-to-back rate: <span className="font-semibold text-gray-800">{result.advanced.fatigue.noBackToBackRate.toFixed(1)}%</span></div>
+                                                <div>No three-in-row rate: <span className="font-semibold text-gray-800">{result.advanced.fatigue.noThreeInRowRate.toFixed(1)}%</span></div>
+                                                <div>Matches with back-to-back players: <span className="font-semibold text-gray-800">{result.advanced.fatigue.matchesWithBackToBackPlayers}</span></div>
+                                                <div>Matches with 3-in-row players: <span className="font-semibold text-gray-800">{result.advanced.fatigue.matchesWithThreeInRowPlayers}</span></div>
+                                                <div>Max consecutive games: <span className="font-semibold text-gray-800">{result.advanced.fatigue.maxConsecutiveGames}</span></div>
+                                            </div>
+                                            {result.advanced.fatigue.maxConsecutivePlayerNames.length > 0 && (
+                                                <div className="mt-2 text-xs text-gray-500">
+                                                    Highest streak players: {result.advanced.fatigue.maxConsecutivePlayerNames.join(', ')}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Proposal Behavior</h4>
+                                            <div className="space-y-1 text-sm text-gray-600">
+                                                <div>Both teams fresh: <span className="font-semibold text-gray-800">{result.advanced.proposal.bothTeamsFreshCount}</span></div>
+                                                <div>One fresh team: <span className="font-semibold text-gray-800">{result.advanced.proposal.oneFreshTeamCount}</span></div>
+                                                <div>No fresh teams: <span className="font-semibold text-gray-800">{result.advanced.proposal.noFreshTeamsCount}</span></div>
+                                                <div>Winner split opportunities: <span className="font-semibold text-gray-800">{result.advanced.proposal.winnerSplitOpportunities}</span></div>
+                                                <div>Winner split success: <span className="font-semibold text-gray-800">{result.advanced.proposal.winnerSplitSuccessRate.toFixed(1)}%</span></div>
                                             </div>
                                         </div>
                                     </div>
