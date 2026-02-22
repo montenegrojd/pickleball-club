@@ -46,16 +46,43 @@ export async function POST(request: Request) {
     if (!activeSession) {
         return NextResponse.json({ error: "No active session. Please start a session first." }, { status: 400 });
     }
+
+    const team1 = Array.isArray(body.team1) ? body.team1 as string[] : [];
+    const team2 = Array.isArray(body.team2) ? body.team2 as string[] : [];
+
+    if (team1.length !== 2 || team2.length !== 2) {
+        return NextResponse.json({ error: 'Matches must have exactly 2 players per team.' }, { status: 400 });
+    }
+
+    const allSelectedIds = [...team1, ...team2];
+    if (new Set(allSelectedIds).size !== 4) {
+        return NextResponse.json({ error: 'Each selected player must be unique across both teams.' }, { status: 400 });
+    }
+
+    const rosterSet = new Set(activeSession.playerIds);
+    const outOfRoster = allSelectedIds.filter(playerId => !rosterSet.has(playerId));
+    if (outOfRoster.length > 0) {
+        return NextResponse.json({ error: 'All selected players must be checked in for the active session.' }, { status: 400 });
+    }
+
+    const existingMatches = await db.getMatchesBySessionId(activeSession.id);
+    const activeMatches = existingMatches.filter(match => !match.isFinished);
+    const busyPlayers = new Set(activeMatches.flatMap(match => [...match.team1, ...match.team2]));
+    const alreadyBusy = allSelectedIds.filter(playerId => busyPlayers.has(playerId));
+
+    if (alreadyBusy.length > 0) {
+        return NextResponse.json({ error: 'One or more selected players are already in an active match.' }, { status: 400 });
+    }
     
     // Create new match with sessionId
     const newMatch: Match = {
+        ...body,
         id: uuidv4(),
         sessionId: activeSession.id,
-        team1: body.team1,
-        team2: body.team2,
+        team1,
+        team2,
         isFinished: false,
         timestamp: Date.now(),
-        ...body
     };
 
     await db.addMatch(newMatch);

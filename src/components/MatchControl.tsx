@@ -3,13 +3,21 @@
 
 import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
-import { Play, CheckCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Play, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 interface MatchAnalytics {
     hadFatiguedPlayers: string[];
     winnersWereSplit: boolean | null;
     repeatedPartnerships: Array<{ player1: string, player2: string }>;
     keptWinners: boolean;
+}
+
+interface PendingProposal {
+    team1: string[];
+    team2: string[];
+    analytics: MatchAnalytics | null;
+    availablePlayerIds: string[];
+    isEdited: boolean;
 }
 
 interface MatchControlProps {
@@ -27,6 +35,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [lastMatchAnalytics, setLastMatchAnalytics] = useState<MatchAnalytics | null>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [matchMode, setMatchMode] = useState<'rotation' | 'playoff'>('rotation');
+    const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
 
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
@@ -55,52 +64,148 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     };
 
     useEffect(() => {
-        fetchData();
+        void (async () => {
+            await fetchData();
+        })();
     }, [refreshTrigger]);
 
-    const createMatch = async () => {
+    const getSessionRosterIds = async () => {
+        const sessionPath = sessionId ? `/api/session?id=${sessionId}` : '/api/session';
+        const response = await fetch(sessionPath);
+        if (!response.ok) return [] as string[];
+        const session = await response.json();
+        return Array.isArray(session.playerIds) ? session.playerIds as string[] : [];
+    };
+
+    const getCurrentMatchContext = async () => {
+        const [matchesResponse, rosterIds] = await Promise.all([
+            fetch('/api/matches'),
+            getSessionRosterIds()
+        ]);
+        const matches: Match[] = await matchesResponse.json();
+        const activeMatchesNow = matches.filter(match => !match.isFinished);
+        const busyPlayerIds = new Set(activeMatchesNow.flatMap(match => [...match.team1, ...match.team2]));
+        const availablePlayerIds = rosterIds.filter(id => !busyPlayerIds.has(id));
+
+        const usedCourtNumbers = new Set(
+            activeMatchesNow
+                .map(match => match.courtNumber)
+                .filter((courtNumber): courtNumber is number => typeof courtNumber === 'number' && courtNumber > 0)
+        );
+
+        let nextCourtNumber = 1;
+        while (usedCourtNumbers.has(nextCourtNumber)) {
+            nextCourtNumber += 1;
+        }
+
+        return {
+            nextCourtNumber,
+            availablePlayerIds
+        };
+    };
+
+    const createMatchFromTeams = async (team1: string[], team2: string[]) => {
+        const { nextCourtNumber } = await getCurrentMatchContext();
+
+        const createResponse = await fetch('/api/matches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                team1,
+                team2,
+                isFinished: false,
+                courtNumber: nextCourtNumber
+            })
+        });
+
+        if (!createResponse.ok) {
+            const data = await createResponse.json().catch(() => ({}));
+            return { success: false, error: data.error || 'Failed to create match' };
+        }
+
+        return { success: true, error: '' };
+    };
+
+    const requestProposal = async () => {
         const res = await fetch(`/api/matchmaker?mode=${matchMode}`);
         const proposal = await res.json();
 
         if (proposal && !proposal.error) {
-            // Store analytics for display
-            if (proposal.analytics) {
-                setLastMatchAnalytics(proposal.analytics);
-                setShowAnalytics(true);
-            }
+            const { availablePlayerIds } = await getCurrentMatchContext();
 
-            const matchesResponse = await fetch('/api/matches');
-            const matches: Match[] = await matchesResponse.json();
-            const activeCount = matches.filter(m => !m.isFinished).length;
-            const courtNum = activeCount + 1;
-
-            await fetch('/api/matches', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    team1: proposal.team1,
-                    team2: proposal.team2,
-                    isFinished: false,
-                    courtNumber: courtNum
-                })
+            const analytics = proposal.analytics || null;
+            setLastMatchAnalytics(analytics);
+            setShowAnalytics(true);
+            setPendingProposal({
+                team1: proposal.team1,
+                team2: proposal.team2,
+                analytics,
+                availablePlayerIds,
+                isEdited: false
             });
-            return true;
+            return { success: true, proposal };
         }
 
-        return false;
+        return { success: false, proposal };
     };
 
     const generateMatch = async () => {
         setLoading(true);
-        const created = await createMatch();
+        const result = await requestProposal();
 
-        if (created) {
-            await fetchData();
-            onUpdate();
-        } else {
+        if (!result.success) {
             alert("Could not generate match. Not enough free players?");
+        } else {
+            setShowAnalytics(true);
         }
+
         setLoading(false);
+    };
+
+    const confirmPendingProposal = async () => {
+        if (!pendingProposal) return;
+
+        setLoading(true);
+        const result = await createMatchFromTeams(pendingProposal.team1, pendingProposal.team2);
+
+        if (!result.success) {
+            alert(result.error);
+            setLoading(false);
+            return;
+        }
+
+        setPendingProposal(null);
+        await fetchData();
+        onUpdate();
+        setLoading(false);
+    };
+
+    const updatePendingProposalPlayer = (team: 1 | 2, index: number, playerId: string) => {
+        if (!pendingProposal) return;
+
+        const selectedPlayers = [...pendingProposal.team1, ...pendingProposal.team2];
+        const currentPlayerId = team === 1 ? pendingProposal.team1[index] : pendingProposal.team2[index];
+
+        if (playerId !== currentPlayerId && selectedPlayers.includes(playerId)) {
+            alert('That player is already selected in this proposal.');
+            return;
+        }
+
+        const nextTeam1 = [...pendingProposal.team1];
+        const nextTeam2 = [...pendingProposal.team2];
+
+        if (team === 1) {
+            nextTeam1[index] = playerId;
+        } else {
+            nextTeam2[index] = playerId;
+        }
+
+        setPendingProposal({
+            ...pendingProposal,
+            team1: nextTeam1,
+            team2: nextTeam2,
+            isEdited: true
+        });
     };
 
     const finishMatch = async (match: Match, startNextMatch = false) => {
@@ -136,10 +241,16 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         });
 
         if (startNextMatch) {
-            const created = await createMatch();
-            if (!created) {
+            const proposalResult = await requestProposal();
+            if (!proposalResult.success) {
                 alert("Match finished, but we couldn't start the next match automatically.");
+            } else {
+                const createResult = await createMatchFromTeams(proposalResult.proposal.team1, proposalResult.proposal.team2);
+                if (!createResult.success) {
+                    alert(`Match finished, but next match creation failed: ${createResult.error}`);
+                }
             }
+            setPendingProposal(null);
         }
 
         await fetchData();
@@ -148,8 +259,6 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     };
 
     const cancelMatch = async (match: Match) => {
-        if (!confirm("Cancel this match? No scores will be recorded.")) return;
-
         setLoading(true);
         await fetch(`/api/matches/${match.id}`, {
             method: 'DELETE'
@@ -207,7 +316,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h2 className="font-bold text-xl text-gray-800 mb-1">Generate Match</h2>
-                        <p className="text-sm text-gray-500">Select a mode and create a new match</p>
+                        <p className="text-sm text-gray-500">Select a mode, edit if needed, then confirm match</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <select
@@ -224,13 +333,76 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                             className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
                         >
                             <Play className="w-4 h-4 fill-current" />
-                            New Match
+                            Generate Proposal
                         </button>
                     </div>
                 </div>
 
+                {pendingProposal && (
+                    <div className="mt-4 border-t pt-4 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2">Team 1</h3>
+                                <div className="space-y-2">
+                                    {[0, 1].map(index => (
+                                        <select
+                                            key={`team1-${index}`}
+                                            value={pendingProposal.team1[index]}
+                                            onChange={(e) => updatePendingProposalPlayer(1, index, e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            {pendingProposal.availablePlayerIds.map(playerId => (
+                                                <option key={playerId} value={playerId}>
+                                                    {allPlayers.find(player => player.id === playerId)?.name || 'Unknown'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2">Team 2</h3>
+                                <div className="space-y-2">
+                                    {[0, 1].map(index => (
+                                        <select
+                                            key={`team2-${index}`}
+                                            value={pendingProposal.team2[index]}
+                                            onChange={(e) => updatePendingProposalPlayer(2, index, e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            {pendingProposal.availablePlayerIds.map(playerId => (
+                                                <option key={playerId} value={playerId}>
+                                                    {allPlayers.find(player => player.id === playerId)?.name || 'Unknown'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setPendingProposal(null)}
+                                disabled={loading}
+                                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 disabled:opacity-50"
+                            >
+                                Discard Proposal
+                            </button>
+                            <button
+                                onClick={confirmPendingProposal}
+                                disabled={loading}
+                                className="bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 disabled:opacity-50"
+                            >
+                                Confirm Match
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Match Analytics */}
-                {lastMatchAnalytics && (
+                {lastMatchAnalytics && (!pendingProposal || !pendingProposal.isEdited) && (
                     <div className="mt-4 border-t pt-4">
                         <button
                             onClick={() => setShowAnalytics(!showAnalytics)}

@@ -3,82 +3,82 @@
     {
       "id": "player-1",
       "name": "Javier",
-      "matchesPlayed": 20,
-      "matchesWon": 7,
-      "pointsScored": 140,
-      "pointsAllowed": 157
+      "matchesPlayed": 28,
+      "matchesWon": 12,
+      "pointsScored": 178,
+      "pointsAllowed": 186
     },
     {
       "id": "player-2",
       "name": "Diego",
-      "matchesPlayed": 18,
-      "matchesWon": 11,
-      "pointsScored": 140,
-      "pointsAllowed": 129
+      "matchesPlayed": 26,
+      "matchesWon": 19,
+      "pointsScored": 173,
+      "pointsAllowed": 146
     },
     {
       "id": "player-3",
       "name": "Sebas",
-      "matchesPlayed": 21,
-      "matchesWon": 10,
-      "pointsScored": 149,
-      "pointsAllowed": 171
+      "matchesPlayed": 29,
+      "matchesWon": 14,
+      "pointsScored": 194,
+      "pointsAllowed": 207
     },
     {
       "id": "player-4",
       "name": "Horacio",
-      "matchesPlayed": 20,
+      "matchesPlayed": 28,
       "matchesWon": 11,
-      "pointsScored": 165,
-      "pointsAllowed": 140
+      "pointsScored": 181,
+      "pointsAllowed": 173
     },
     {
       "id": "player-5",
       "name": "Ivan",
-      "matchesPlayed": 17,
-      "matchesWon": 10,
-      "pointsScored": 131,
-      "pointsAllowed": 121
+      "matchesPlayed": 21,
+      "matchesWon": 12,
+      "pointsScored": 152,
+      "pointsAllowed": 149
     },
     {
       "id": "player-6",
       "name": "Jorge",
-      "matchesPlayed": 16,
-      "matchesWon": 7,
-      "pointsScored": 127,
-      "pointsAllowed": 131
+      "matchesPlayed": 25,
+      "matchesWon": 9,
+      "pointsScored": 161,
+      "pointsAllowed": 162
     },
     {
       "id": "player-7",
       "name": "Xavi",
-      "matchesPlayed": 8,
-      "matchesWon": 6,
-      "pointsScored": 63,
-      "pointsAllowed": 51
+      "matchesPlayed": 17,
+      "matchesWon": 10,
+      "pointsScored": 94,
+      "pointsAllowed": 100
     },
     {
       "id": "player-8",
       "name": "Fede",
-      "matchesPlayed": 3,
-      "matchesWon": 0,
-      "pointsScored": 13,
-      "pointsAllowed": 22
+      "matchesPlayed": 7,
+      "matchesWon": 3,
+      "pointsScored": 29,
+      "pointsAllowed": 39
     },
     {
       "id": "player-9",
       "name": "David",
-      "matchesPlayed": 0,
-      "matchesWon": 0,
-      "pointsScored": 0,
-      "pointsAllowed": 0
+      "matchesPlayed": 5,
+      "matchesWon": 4,
+      "pointsScored": 44,
+      "pointsAllowed": 23
     },
     {
       "id": "player-10",
       "name": "Victor",
-      "matchesPlayed": 0,
-      "matchesWon": 0,
-      "pointsScored": 0,
-      "pointsAllowed": 0
+      "matchesPlayed": 5,
+      "matchesWon": 2,
+      "pointsScored": 18,
+      "pointsAllowed": 33
     }
   ],
   "matches": [
@@ -651,6 +651,329 @@
       "score1": 5,
       "score2": 11,
       "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-2",
+        "player-1"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "0a2060ca-96f4-485d-9324-9268280ddbd2",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771725991438,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-3",
+        "player-7"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "0a1af7e6-34b7-4bf9-82a2-1f905ff557f6",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771725996969,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-1"
+      ],
+      "team2": [
+        "player-2",
+        "player-7"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "8de843e9-661c-4ba3-913a-eb150f6c74cb",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726000288,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-2",
+        "player-1"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "dbad5e46-fe7a-463f-8a24-1899dc56de51",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726031215,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-7"
+      ],
+      "team2": [
+        "player-3",
+        "player-6"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "872f7c18-5220-4550-9a9b-188e7224cd02",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726045646,
+      "isLocked": false,
+      "score1": 4,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-2"
+      ],
+      "team2": [
+        "player-1",
+        "player-7"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "d4a259e8-7cbf-4ca3-8e4a-7cadfbd68e6e",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726059009,
+      "isLocked": false,
+      "score1": 11,
+      "score2": 5,
+      "winnerTeam": 1
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-2",
+        "player-1"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "dbfe7cb7-de25-405b-b969-e41ad599a1f8",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726489420,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-9"
+      ],
+      "team2": [
+        "player-7",
+        "player-5"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "20370abe-8995-4e09-94d5-d1d7d2f20f27",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726509477,
+      "isLocked": false,
+      "score1": 11,
+      "score2": 5,
+      "winnerTeam": 1
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-6"
+      ],
+      "team2": [
+        "player-2",
+        "player-10"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "0568efba-2730-4b38-878d-84c303d13950",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726516737,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-1"
+      ],
+      "team2": [
+        "player-7",
+        "player-8"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "a94532ea-9ac8-45e0-9f23-36e9f61827c0",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726537755,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-6",
+        "player-9"
+      ],
+      "team2": [
+        "player-5",
+        "player-10"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "8a6c8ee5-37cd-430e-9b41-dc5b16cee3cd",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726547342,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-7"
+      ],
+      "team2": [
+        "player-2",
+        "player-8"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "d7c1ad07-0a26-4990-bb12-4f457a5bce50",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726551658,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-10"
+      ],
+      "team2": [
+        "player-1",
+        "player-9"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "6b89709e-c27e-4908-8481-31b5f22967de",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726555008,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-6",
+        "player-7"
+      ],
+      "team2": [
+        "player-5",
+        "player-8"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "2136057f-2b92-4f04-a85a-175770438d9a",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726557582,
+      "isLocked": false,
+      "score1": 11,
+      "score2": 5,
+      "winnerTeam": 1
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-10"
+      ],
+      "team2": [
+        "player-2",
+        "player-9"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "6bbd4d0f-2737-45a6-b863-f84564abe567",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726703248,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-7"
+      ],
+      "team2": [
+        "player-1",
+        "player-8"
+      ],
+      "isFinished": true,
+      "courtNumber": 2,
+      "id": "8899f44a-5f2f-4f15-9af9-6fc3bd70ef02",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726719061,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-6",
+        "player-10"
+      ],
+      "team2": [
+        "player-5",
+        "player-9"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "d4cd813f-5474-4bba-8a3a-16ebce567c7e",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771726753558,
+      "isLocked": false,
+      "score1": 6,
+      "score2": 11,
+      "winnerTeam": 2
     }
   ],
   "sessions": [
@@ -677,7 +1000,11 @@
         "player-6",
         "player-2",
         "player-1",
-        "player-7"
+        "player-7",
+        "player-5",
+        "player-9",
+        "player-10",
+        "player-8"
       ],
       "isActive": true,
       "isClosed": false
