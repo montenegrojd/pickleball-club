@@ -11,10 +11,10 @@
     {
       "id": "player-2",
       "name": "Diego",
-      "matchesPlayed": 26,
+      "matchesPlayed": 27,
       "matchesWon": 19,
-      "pointsScored": 173,
-      "pointsAllowed": 146
+      "pointsScored": 177,
+      "pointsAllowed": 157
     },
     {
       "id": "player-3",
@@ -27,10 +27,10 @@
     {
       "id": "player-4",
       "name": "Horacio",
-      "matchesPlayed": 28,
-      "matchesWon": 11,
-      "pointsScored": 181,
-      "pointsAllowed": 173
+      "matchesPlayed": 29,
+      "matchesWon": 12,
+      "pointsScored": 192,
+      "pointsAllowed": 177
     },
     {
       "id": "player-5",
@@ -51,18 +51,18 @@
     {
       "id": "player-7",
       "name": "Xavi",
-      "matchesPlayed": 17,
+      "matchesPlayed": 18,
       "matchesWon": 10,
-      "pointsScored": 94,
-      "pointsAllowed": 100
+      "pointsScored": 98,
+      "pointsAllowed": 111
     },
     {
       "id": "player-8",
       "name": "Fede",
-      "matchesPlayed": 7,
-      "matchesWon": 3,
-      "pointsScored": 29,
-      "pointsAllowed": 39
+      "matchesPlayed": 8,
+      "matchesWon": 4,
+      "pointsScored": 40,
+      "pointsAllowed": 43
     },
     {
       "id": "player-9",
@@ -974,6 +974,40 @@
       "score1": 6,
       "score2": 11,
       "winnerTeam": 2
+    },
+    {
+      "team1": [
+        "player-4",
+        "player-8"
+      ],
+      "team2": [
+        "player-2",
+        "player-7"
+      ],
+      "isFinished": true,
+      "courtNumber": 1,
+      "id": "b61e3394-793d-4e8b-906d-5981eae9dbda",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771871243166,
+      "isLocked": false,
+      "score1": 11,
+      "score2": 4,
+      "winnerTeam": 1
+    },
+    {
+      "team1": [
+        "player-3",
+        "player-1"
+      ],
+      "team2": [
+        "player-9",
+        "player-10"
+      ],
+      "isFinished": false,
+      "courtNumber": 1,
+      "id": "b236c6be-8787-4393-bb9e-9f8c57a42004",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "timestamp": 1771871250085
     }
   ],
   "sessions": [

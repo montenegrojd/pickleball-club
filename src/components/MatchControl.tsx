@@ -37,6 +37,13 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [matchMode, setMatchMode] = useState<'rotation' | 'playoff'>('rotation');
     const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
 
+    const hasDuplicatePendingPlayers = pendingProposal
+        ? (() => {
+            const selectedPlayers = [...pendingProposal.team1, ...pendingProposal.team2].filter(Boolean);
+            return new Set(selectedPlayers).size !== selectedPlayers.length;
+        })()
+        : false;
+
     const fetchData = async () => {
         const [mRes, pRes] = await Promise.all([
             fetch('/api/matches'),
@@ -165,6 +172,10 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const confirmPendingProposal = async () => {
         if (!pendingProposal) return;
 
+        if (hasDuplicatePendingPlayers) {
+            return;
+        }
+
         setLoading(true);
         const result = await createMatchFromTeams(pendingProposal.team1, pendingProposal.team2);
 
@@ -182,14 +193,6 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
 
     const updatePendingProposalPlayer = (team: 1 | 2, index: number, playerId: string) => {
         if (!pendingProposal) return;
-
-        const selectedPlayers = [...pendingProposal.team1, ...pendingProposal.team2];
-        const currentPlayerId = team === 1 ? pendingProposal.team1[index] : pendingProposal.team2[index];
-
-        if (playerId !== currentPlayerId && selectedPlayers.includes(playerId)) {
-            alert('That player is already selected in this proposal.');
-            return;
-        }
 
         const nextTeam1 = [...pendingProposal.team1];
         const nextTeam2 = [...pendingProposal.team2];
@@ -392,7 +395,8 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                             </button>
                             <button
                                 onClick={confirmPendingProposal}
-                                disabled={loading}
+                                disabled={loading || hasDuplicatePendingPlayers}
+                                title={hasDuplicatePendingPlayers ? 'Select 4 different players to confirm' : undefined}
                                 className="bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 disabled:opacity-50"
                             >
                                 Confirm Match
