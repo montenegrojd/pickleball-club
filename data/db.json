@@ -3,80 +3,80 @@
     {
       "id": "player-1",
       "name": "Javier",
-      "matchesPlayed": 28,
+      "matchesPlayed": 30,
       "matchesWon": 12,
       "pointsScored": 178,
-      "pointsAllowed": 186
+      "pointsAllowed": 197
     },
     {
       "id": "player-2",
       "name": "Diego",
-      "matchesPlayed": 27,
+      "matchesPlayed": 28,
       "matchesWon": 19,
       "pointsScored": 177,
-      "pointsAllowed": 157
+      "pointsAllowed": 168
     },
     {
       "id": "player-3",
       "name": "Sebas",
-      "matchesPlayed": 29,
-      "matchesWon": 14,
-      "pointsScored": 194,
+      "matchesPlayed": 31,
+      "matchesWon": 15,
+      "pointsScored": 205,
       "pointsAllowed": 207
     },
     {
       "id": "player-4",
       "name": "Horacio",
-      "matchesPlayed": 29,
-      "matchesWon": 12,
-      "pointsScored": 192,
+      "matchesPlayed": 30,
+      "matchesWon": 13,
+      "pointsScored": 203,
       "pointsAllowed": 177
     },
     {
       "id": "player-5",
       "name": "Ivan",
-      "matchesPlayed": 21,
+      "matchesPlayed": 22,
       "matchesWon": 12,
-      "pointsScored": 152,
-      "pointsAllowed": 149
+      "pointsScored": 159,
+      "pointsAllowed": 160
     },
     {
       "id": "player-6",
       "name": "Jorge",
-      "matchesPlayed": 25,
-      "matchesWon": 9,
-      "pointsScored": 161,
-      "pointsAllowed": 162
+      "matchesPlayed": 26,
+      "matchesWon": 10,
+      "pointsScored": 172,
+      "pointsAllowed": 169
     },
     {
       "id": "player-7",
       "name": "Xavi",
-      "matchesPlayed": 18,
+      "matchesPlayed": 19,
       "matchesWon": 10,
-      "pointsScored": 98,
-      "pointsAllowed": 111
+      "pointsScored": 105,
+      "pointsAllowed": 122
     },
     {
       "id": "player-8",
       "name": "Fede",
-      "matchesPlayed": 8,
-      "matchesWon": 4,
-      "pointsScored": 40,
-      "pointsAllowed": 43
+      "matchesPlayed": 9,
+      "matchesWon": 5,
+      "pointsScored": 51,
+      "pointsAllowed": 50
     },
     {
       "id": "player-9",
       "name": "David",
-      "matchesPlayed": 5,
-      "matchesWon": 4,
+      "matchesPlayed": 6,
+      "matchesWon": 5,
       "pointsScored": 44,
       "pointsAllowed": 23
     },
     {
       "id": "player-10",
       "name": "Victor",
-      "matchesPlayed": 5,
-      "matchesWon": 2,
+      "matchesPlayed": 6,
+      "matchesWon": 3,
       "pointsScored": 18,
       "pointsAllowed": 33
     }
@@ -1003,11 +1003,45 @@
         "player-9",
         "player-10"
       ],
-      "isFinished": false,
+      "isFinished": true,
       "courtNumber": 1,
       "id": "b236c6be-8787-4393-bb9e-9f8c57a42004",
       "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
-      "timestamp": 1771871250085
+      "timestamp": 1771871250085,
+      "isLocked": false,
+      "score1": 0,
+      "score2": 0,
+      "winnerTeam": 2
+    },
+    {
+      "id": "66a16142-bbf1-4a3e-be8a-e3c93f1d9173",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "team1": [
+        "player-6",
+        "player-8"
+      ],
+      "team2": [
+        "player-7",
+        "player-5"
+      ],
+      "isFinished": true,
+      "score1": 11,
+      "score2": 7,
+      "winnerTeam": 1
+    },
+    {
+      "team1": [
+        "player-1",
+        "player-2"
+      ],
+      "team2": [
+        "player-3",
+        "player-4"
+      ],
+      "id": "f141c072-fbbb-49a5-8233-b04549e21d4c",
+      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
+      "isFinished": false,
+      "timestamp": 1782482114683
     }
   ],
   "sessions": [
