@@ -17,12 +17,16 @@ interface SessionWithStats {
 
 export default function SessionManager() {
     const [sessions, setSessions] = useState<SessionWithStats[]>([]);
+    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const PAGE_SIZE = 10;
 
-    const fetchSessions = async () => {
-        const res = await fetch('/api/sessions');
+    const fetchSessions = async (replace = true) => {
+        const offset = replace ? 0 : sessions.length;
+        const res = await fetch(`/api/sessions?limit=${PAGE_SIZE}&offset=${offset}`);
         const data = await res.json();
-        setSessions(data);
+        setSessions(prev => replace ? data.sessions : [...prev, ...data.sessions]);
+        setTotal(data.total);
     };
 
     useEffect(() => {
@@ -31,33 +35,36 @@ export default function SessionManager() {
 
     const handleStartNewSession = async () => {
         if (!confirm('Start a new session? This will deactivate the current session.')) return;
-        
         setLoading(true);
         await fetch('/api/session/start', { method: 'POST' });
-        await fetchSessions();
+        await fetchSessions(true);
         setLoading(false);
     };
 
     const handleCloseSession = async () => {
         if (!confirm('Are you sure you want to CLOSE the session? This will sign out all players.\n\nStats will be preserved.')) return;
-        
         setLoading(true);
         await fetch('/api/session/close', { method: 'POST' });
-        await fetchSessions();
+        await fetchSessions(true);
         setLoading(false);
     };
 
     const handleDeleteSession = async (sessionId: string, sessionDate: string) => {
         if (!confirm(`Delete session from ${sessionDate}?\n\nThis will permanently delete the session and all its matches. Player stats will be recalculated.\n\nThis action cannot be undone!`)) return;
-        
         setLoading(true);
         const res = await fetch(`/api/session/${sessionId}`, { method: 'DELETE' });
         if (res.ok) {
-            await fetchSessions();
+            await fetchSessions(true);
         } else {
             const error = await res.json();
             alert(`Error: ${error.error}`);
         }
+        setLoading(false);
+    };
+
+    const handleLoadMore = async () => {
+        setLoading(true);
+        await fetchSessions(false);
         setLoading(false);
     };
 
@@ -107,7 +114,9 @@ export default function SessionManager() {
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
                                 <Calendar className="w-6 h-6 text-emerald-600" />
-                                <h2 className="text-2xl font-bold text-gray-800">Sessions</h2>
+                                <h2 className="text-2xl font-bold text-gray-800">
+                                    Sessions {total > 0 && <span className="text-gray-400 font-normal text-lg">({total})</span>}
+                                </h2>
                             </div>
                             {!activeSession && (
                                 <button
@@ -229,6 +238,16 @@ export default function SessionManager() {
                                 </div>
                             )}
                         </div>
+
+                        {sessions.length < total && (
+                            <button
+                                onClick={handleLoadMore}
+                                disabled={loading}
+                                className="mt-4 w-full py-2 text-sm font-semibold text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+                            >
+                                {loading ? 'Loading…' : `Load more (${total - sessions.length} remaining)`}
+                            </button>
+                        )}
                     </div>
                 </div>
             </main>
