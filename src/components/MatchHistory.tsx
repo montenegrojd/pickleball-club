@@ -5,12 +5,16 @@ import { useState, useEffect } from 'react';
 import { Match, Player } from '@/lib/types';
 import { Clock, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 
-export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { refreshTrigger: number, onUpdate: () => void, sessionId?: string }) {
+export default function MatchHistory({ refreshTrigger, onUpdate, sessionId, defaultExpanded = false }: { refreshTrigger: number, onUpdate: () => void, sessionId?: string, defaultExpanded?: boolean }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [players, setPlayers] = useState<Player[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editScores, setEditScores] = useState({ s1: '', s2: '' });
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+    useEffect(() => {
+        if (defaultExpanded) setIsExpanded(true);
+    }, [defaultExpanded]);
 
     useEffect(() => {
         if (!isExpanded) return;
@@ -124,6 +128,11 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
 
                             {editingId === m.id ? (
                                 <div className="flex flex-col items-center gap-2 mx-4 bg-white p-2 rounded border shadow-sm z-10">
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 w-full justify-around">
+                                        <span className="font-semibold truncate max-w-[80px] text-center">{getNames(m.team1)}</span>
+                                        <span className="invisible">-</span>
+                                        <span className="font-semibold truncate max-w-[80px] text-center">{getNames(m.team2)}</span>
+                                    </div>
                                     <div className="flex items-center gap-4">
                                         {/* Team 1 Score */}
                                         <div className="flex items-center gap-1">

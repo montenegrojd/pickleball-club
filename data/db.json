@@ -1028,20 +1028,6 @@
       "score1": 11,
       "score2": 7,
       "winnerTeam": 1
-    },
-    {
-      "team1": [
-        "player-1",
-        "player-2"
-      ],
-      "team2": [
-        "player-3",
-        "player-4"
-      ],
-      "id": "f141c072-fbbb-49a5-8233-b04549e21d4c",
-      "sessionId": "54859c31-31c8-4e24-a908-025aa63708cd",
-      "isFinished": false,
-      "timestamp": 1782482114683
     }
   ],
   "sessions": [

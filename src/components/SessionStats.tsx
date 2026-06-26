@@ -18,12 +18,16 @@ interface Stats {
     maxWaitTime: number;
 }
 
-export default function SessionStats({ refreshTrigger, sessionId }: { refreshTrigger: number, sessionId?: string }) {
+export default function SessionStats({ refreshTrigger, sessionId, defaultExpanded = false }: { refreshTrigger: number, sessionId?: string, defaultExpanded?: boolean }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [players, setPlayers] = useState<Player[]>([]);
     const [quality, setQuality] = useState<QualityMetrics | null>(null);
     const [stats, setStats] = useState<Stats | null>(null);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+    useEffect(() => {
+        if (defaultExpanded) setIsExpanded(true);
+    }, [defaultExpanded]);
 
     useEffect(() => {
         if (!isExpanded) return;

@@ -110,8 +110,8 @@ export default function SessionDashboard() {
               <PlayerInsights refreshTrigger={refreshTrigger} sessionId={sessionId} />
               {/* Match History - shows below leaderboard on mobile, stays in left column on desktop */}
               <div className="md:hidden">
-                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} />
-                <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} />
+                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded={session?.isClosed} />
+                <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded={session?.isClosed} />
                 <MatchmakingRules />
               </div>
             </div>
@@ -123,8 +123,8 @@ export default function SessionDashboard() {
               )}
               {/* Match History - hidden on mobile, shows on desktop */}
               <div className="hidden md:block">
-                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} />
-                <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} />
+                <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded={session?.isClosed} />
+                <MatchHistory onUpdate={handleUpdate} refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded={session?.isClosed} />
                 <MatchmakingRules />
               </div>
             </div>

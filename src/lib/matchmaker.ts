@@ -475,6 +475,58 @@ export class Matchmaker {
     }
 
     /**
+     * Strict Rotation matchmaking algorithm
+     * Always picks the 4 players who have waited longest (by lastPlayedIndex).
+     * Team formation uses the same partnership scoring as the regular mode.
+     */
+    static proposeStrictRotation(
+        availablePlayerIds: string[],
+        history: Match[],
+        playerNames?: Map<string, string>
+    ): MatchProposal | null {
+        if (availablePlayerIds.length < 4) return null;
+
+        const fatigued = this.identifyFatiguedPlayers(history);
+        const playerStats = this.calculatePlayerStats(availablePlayerIds, history);
+        const historicalTeams = this.getHistoricalTeams(history);
+        const winners = this.getLastMatchWinners(history);
+
+        // Sort by longest wait (Infinity = never played, so they go first)
+        // Ties broken by fewest games played
+        const sorted = [...availablePlayerIds].sort((a, b) => {
+            const sa = playerStats.get(a)!;
+            const sb = playerStats.get(b)!;
+            if (sb.lastPlayedIndex !== sa.lastPlayedIndex) {
+                return sb.lastPlayedIndex - sa.lastPlayedIndex; // higher index = waited longer
+            }
+            return sa.gamesPlayed - sb.gamesPlayed; // fewer games = higher priority
+        });
+
+        const selectedPlayers = sorted.slice(0, 4);
+
+        // Team formation: same scoring as regular mode
+        const configs = this.generateAllConfigurations(selectedPlayers);
+        const scoredConfigs = configs.map(config => ({
+            config,
+            score: this.scoreConfiguration(config, historicalTeams, selectedPlayers, winners)
+        }));
+        scoredConfigs.sort((a, b) => b.score - a.score);
+        const bestConfig = scoredConfigs[0].config;
+
+        const reasonData = this.generateReason(scoredConfigs, historicalTeams, fatigued, playerNames);
+        const analytics = this.generateAnalytics(history, bestConfig, selectedPlayers, historicalTeams, fatigued);
+
+        return {
+            team1: bestConfig.team1,
+            team2: bestConfig.team2,
+            reason: "Strict queue rotation. " + reasonData.combined,
+            mainReason: "Strict queue: longest-waiting players selected.",
+            scoringBreakdown: reasonData.breakdown,
+            analytics
+        };
+    }
+
+    /**
      * Playoff/Tournament matchmaking algorithm
      * Seeds players by performance (points, wins) and creates competitive matchups:
      * #1 vs #4 and #2 vs #3

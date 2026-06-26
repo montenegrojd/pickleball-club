@@ -10,11 +10,17 @@ export async function GET(request: Request) {
     const sessions = await db.getSessions();
     const allMatches = await db.getMatches();
 
-    const sessionsWithStats = sessions.map((session) => ({
-        ...session,
-        matchCount: allMatches.filter(m => m.sessionId === session.id).length,
-        playerCount: session.playerIds.length,
-    }));
+    const sessionsWithStats = sessions.map((session) => {
+        const sessionMatches = allMatches.filter(m => m.sessionId === session.id);
+        const playerCount = session.playerIds.length > 0
+            ? session.playerIds.length
+            : new Set(sessionMatches.flatMap(m => [...m.team1, ...m.team2])).size;
+        return {
+            ...session,
+            matchCount: sessionMatches.length,
+            playerCount,
+        };
+    });
 
     sessionsWithStats.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 

@@ -70,6 +70,8 @@ export async function GET(request: Request) {
 
         const playerStats = Array.from(statsMap.values());
         proposal = Matchmaker.proposePlayoffMatch(availablePlayers, sessionMatches, playerStats, playerNames);
+    } else if (mode === 'strict') {
+        proposal = Matchmaker.proposeStrictRotation(availablePlayers, sessionMatches, playerNames);
     } else {
         // Regular rotation mode
         proposal = Matchmaker.proposeMatch(availablePlayers, sessionMatches, playerNames);

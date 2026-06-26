@@ -51,66 +51,77 @@ export default function MatchmakingRules() {
                     {/* Rotation Mode */}
                     {selectedMode === 'rotation' && (
                         <div className="text-sm text-gray-600 space-y-4">
-                            <p className="text-gray-700 font-medium">Partnership-first matchmaking: prioritizes fresh pairings while maintaining fair rotation.</p>
+                            <p className="text-gray-500 italic text-xs">Players in active matches are always excluded before either mode runs.</p>
 
-                            {/* Phase 1 */}
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</div>
-                                    <h4 className="font-bold text-gray-800">Player Selection - Who Plays</h4>
-                                </div>
-                                <div className="ml-8 space-y-2">
-                                    <div className="flex gap-2">
-                                        <span className="font-semibold text-gray-500">1.</span>
-                                        <span><strong className="text-gray-800">Generate Combinations:</strong> All possible 4-player groups from available players (excluding those in active matches)</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span className="font-semibold text-gray-500">2.</span>
-                                        <span><strong className="text-gray-800">Fatigue Filter (Hard Rule):</strong> Exclude combinations with players who played last 2 consecutive matches if non-fatigued options exist</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span className="font-semibold text-gray-500">3.</span>
-                                        <span><strong className="text-gray-800">Fresh Partnership Priority:</strong> Among non-fatigued options, prefer combinations that can form new/unused partnerships</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span className="font-semibold text-gray-500">4.</span>
-                                        <span><strong className="text-gray-800">Fairness Scoring:</strong> Select combination with longest combined bench time and fewest combined games played</span>
-                                    </div>
-                                </div>
+                            {/* Comparison table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            <th className="text-left p-2 font-semibold text-gray-700 border border-gray-200 w-1/3">Aspect</th>
+                                            <th className="text-left p-2 font-semibold text-blue-700 border border-gray-200 w-1/3">Rotation</th>
+                                            <th className="text-left p-2 font-semibold text-emerald-700 border border-gray-200 w-1/3">Strict Rotation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className="p-2 border border-gray-200 text-gray-600">Player selection</td>
+                                            <td className="p-2 border border-gray-200">Best-scoring 4-player combination</td>
+                                            <td className="p-2 border border-gray-200">Top 4 by bench time, always</td>
+                                        </tr>
+                                        <tr className="bg-gray-50">
+                                            <td className="p-2 border border-gray-200 text-gray-600">Fatigue filter</td>
+                                            <td className="p-2 border border-gray-200">Yes — avoids players who played 2 in a row</td>
+                                            <td className="p-2 border border-gray-200">No — queue is strictly respected</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="p-2 border border-gray-200 text-gray-600">Fresh partnership priority</td>
+                                            <td className="p-2 border border-gray-200">Yes — filters out combinations with no fresh pairings</td>
+                                            <td className="p-2 border border-gray-200">No — bench time wins</td>
+                                        </tr>
+                                        <tr className="bg-gray-50">
+                                            <td className="p-2 border border-gray-200 text-gray-600">Tie-break</td>
+                                            <td className="p-2 border border-gray-200">Longest combined wait + fewest games</td>
+                                            <td className="p-2 border border-gray-200">Fewest games played</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="p-2 border border-gray-200 text-gray-600">Team formation</td>
+                                            <td className="p-2 border border-gray-200" colSpan={2}>Same for both — scored by fresh partnerships and winner split</td>
+                                        </tr>
+                                        <tr className="bg-gray-50">
+                                            <td className="p-2 border border-gray-200 text-gray-600">Best for</td>
+                                            <td className="p-2 border border-gray-200">Maximizing variety of matchups</td>
+                                            <td className="p-2 border border-gray-200">Guaranteeing equal court time</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
-                            {/* Phase 2 */}
+                            {/* Team formation scoring */}
                             <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">2</div>
-                                    <h4 className="font-bold text-gray-800">Team Formation - How to Pair Them</h4>
-                                </div>
-                                <div className="ml-8 space-y-2">
-                                    <p className="text-gray-600 mb-2">With 4 players selected, the algorithm scores all 3 possible team configurations:</p>
-                                    <div className="bg-gray-50 rounded p-3 space-y-1.5">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-700">Fresh partnership (unused pairing)</span>
-                                            <span className="font-mono text-sm font-bold text-emerald-600">+150</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-700">Both teams fresh (bonus)</span>
-                                            <span className="font-mono text-sm font-bold text-emerald-600">+300</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-700">Winners split to opposite teams</span>
-                                            <span className="font-mono text-sm font-bold text-emerald-600">+200</span>
-                                        </div>
-                                        <div className="border-t border-gray-200 my-1"></div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-700">Repeated partnership</span>
-                                            <span className="font-mono text-sm font-bold text-red-600">-100</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-700">Winners kept together (same team)</span>
-                                            <span className="font-mono text-sm font-bold text-red-600">-300</span>
-                                        </div>
+                                <h4 className="font-bold text-gray-800 mb-2">Team Formation Scoring</h4>
+                                <div className="bg-gray-50 rounded p-3 space-y-1.5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-700">Fresh partnership (unused pairing)</span>
+                                        <span className="font-mono text-sm font-bold text-emerald-600">+150</span>
                                     </div>
-                                    <p className="text-gray-500 italic text-xs mt-2">Configuration with highest total score is selected</p>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-700">Both teams fresh (bonus)</span>
+                                        <span className="font-mono text-sm font-bold text-emerald-600">+300</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-700">Winners split to opposite teams</span>
+                                        <span className="font-mono text-sm font-bold text-emerald-600">+200</span>
+                                    </div>
+                                    <div className="border-t border-gray-200 my-1"></div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-700">Repeated partnership</span>
+                                        <span className="font-mono text-sm font-bold text-red-600">-100</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-700">Winners kept together</span>
+                                        <span className="font-mono text-sm font-bold text-red-600">-300</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
