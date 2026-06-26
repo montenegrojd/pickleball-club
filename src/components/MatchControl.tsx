@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Match, Player } from '@/lib/types';
 import { Play, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
@@ -36,6 +36,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [matchMode, setMatchMode] = useState<'rotation' | 'playoff'>('rotation');
     const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
+    const score2Refs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const hasDuplicatePendingPlayers = pendingProposal
         ? (() => {
@@ -223,6 +224,11 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             return;
         }
 
+        if (s1 === 0 && s2 === 0) {
+            alert("Cannot save a match with score 0-0. Please enter the actual scores.");
+            return;
+        }
+
         setLoading(true);
         await fetch('/api/matches', {
             method: 'PUT',
@@ -305,6 +311,9 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     [team === 1 ? 's1' : 's2']: value
                 }
             }));
+            if (team === 1 && value.length === 2) {
+                score2Refs.current[matchId]?.focus();
+            }
         }
     }
 
@@ -522,6 +531,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                         <div className="flex items-center justify-center gap-3">
                                             <button onClick={() => updateScore(match.id, 2, 'dec')} className="p-2 w-10 h-10 bg-gray-200 rounded-full font-bold hover:bg-gray-300 active:scale-95">-</button>
                                             <input
+                                                ref={(el) => { score2Refs.current[match.id] = el; }}
                                                 type="text"
                                                 inputMode="numeric"
                                                 value={scores.s2}

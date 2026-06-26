@@ -23,13 +23,15 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
     const [players, setPlayers] = useState<Player[]>([]);
     const [quality, setQuality] = useState<QualityMetrics | null>(null);
     const [stats, setStats] = useState<Stats | null>(null);
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
-        const matchesUrl = sessionId 
+        if (!isExpanded) return;
+
+        const matchesUrl = sessionId
             ? `/api/matches?sessionId=${sessionId}`
             : '/api/matches';
-        
+
         Promise.all([
             fetch(matchesUrl).then(res => res.json()),
             fetch('/api/players').then(res => res.json())
@@ -37,7 +39,7 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
             const finishedMatches = (mData as Match[]).filter(m => m.isFinished);
             setMatches(finishedMatches);
             setPlayers(pData);
-            
+
             if (finishedMatches.length > 0) {
                 // Get unique players who actually played in these matches
                 const playersInMatches = new Set<string>();
@@ -45,12 +47,12 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                     [...match.team1, ...match.team2].forEach(id => playersInMatches.add(id));
                 });
                 const playerCount = playersInMatches.size;
-                
+
                 setQuality(calculateQualityMetrics(finishedMatches, playerCount));
                 setStats(calculateStats(finishedMatches, pData));
             }
         });
-    }, [refreshTrigger, sessionId]);
+    }, [isExpanded, refreshTrigger, sessionId]);
 
     const calculateQualityMetrics = (matches: Match[], playerCount: number): QualityMetrics => {
         let fatigueAvoidanceCount = 0;
@@ -208,10 +210,6 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
         };
     };
 
-    if (matches.length === 0 || !quality || !stats) {
-        return null;
-    }
-
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
             <div
@@ -227,7 +225,11 @@ export default function SessionStats({ refreshTrigger, sessionId }: { refreshTri
                 </button>
             </div>
 
-            {isExpanded && (
+            {isExpanded && (matches.length === 0 || !quality || !stats) && (
+                <p className="text-sm text-gray-400">Loading…</p>
+            )}
+
+            {isExpanded && matches.length > 0 && quality && stats && (
                 <div className="space-y-6">
                     {/* Quality Metrics */}
                     <div>

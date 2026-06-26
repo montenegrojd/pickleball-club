@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Player, Match } from '@/lib/types';
-import { Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
 import clsx from 'clsx';
 
 interface PartnershipStats {
@@ -147,14 +147,18 @@ export default function PlayerInsights({ refreshTrigger, sessionId, showAllTime 
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <button
+            <div
                 onClick={() => setInsightsExpanded(!insightsExpanded)}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-4"
+                className="flex items-center justify-between cursor-pointer mb-4"
             >
-                <Users className="w-5 h-5" />
-                <h2 className="font-bold text-lg text-gray-800">Player Insights</h2>
-                <span className="text-sm text-gray-500">({insightsExpanded ? 'hide' : 'show'})</span>
-            </button>
+                <div className="flex items-center gap-2 text-blue-600">
+                    <Users className="w-5 h-5" />
+                    <h2 className="font-bold text-lg text-gray-800">Player Insights</h2>
+                </div>
+                <button className="text-gray-400 hover:text-gray-600">
+                    {insightsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+            </div>
 
             {insightsExpanded && (
                 <div className="space-y-4">

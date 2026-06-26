@@ -1,22 +1,33 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MatchmakingRules() {
     const [selectedMode, setSelectedMode] = useState<'rotation' | 'playoff'>('rotation');
+    const [isExpanded, setIsExpanded] = useState(false);
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
-            <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                    <h3 className="font-bold text-gray-800 mb-3">How Matches Are Proposed</h3>
-                    
+            <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <div className="flex items-center gap-3">
+                    <Info className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <h3 className="font-bold text-gray-800">How Matches Are Proposed</h3>
+                </div>
+                <button className="text-gray-400 hover:text-gray-600">
+                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+            </div>
+
+            {isExpanded && (
+                <div className="mt-4">
                     {/* Mode Selector Tabs */}
                     <div className="flex gap-2 mb-4 border-b border-gray-200">
                         <button
-                            onClick={() => setSelectedMode('rotation')}
+                            onClick={(e) => { e.stopPropagation(); setSelectedMode('rotation'); }}
                             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                                 selectedMode === 'rotation'
                                     ? 'border-emerald-600 text-emerald-600'
@@ -26,7 +37,7 @@ export default function MatchmakingRules() {
                             Rotation
                         </button>
                         <button
-                            onClick={() => setSelectedMode('playoff')}
+                            onClick={(e) => { e.stopPropagation(); setSelectedMode('playoff'); }}
                             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                                 selectedMode === 'playoff'
                                     ? 'border-emerald-600 text-emerald-600'
@@ -41,7 +52,7 @@ export default function MatchmakingRules() {
                     {selectedMode === 'rotation' && (
                         <div className="text-sm text-gray-600 space-y-4">
                             <p className="text-gray-700 font-medium">Partnership-first matchmaking: prioritizes fresh pairings while maintaining fair rotation.</p>
-                            
+
                             {/* Phase 1 */}
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -132,7 +143,7 @@ export default function MatchmakingRules() {
                         </div>
                     )}
                 </div>
-            </div>
+            )}
         </div>
     );
 }

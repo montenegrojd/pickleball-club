@@ -101,6 +101,9 @@ export async function PUT(request: Request) {
     }
 
     if (body.isFinished) {
+        if ((body.score1 ?? 0) === 0 && (body.score2 ?? 0) === 0) {
+            return NextResponse.json({ error: "Cannot save a match with score 0-0." }, { status: 400 });
+        }
         const players = await db.getPlayers();
         const matches = await db.getMatches();
         const oldMatchVersion = matches.find(m => m.id === body.id);

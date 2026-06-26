@@ -10,13 +10,15 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
     const [players, setPlayers] = useState<Player[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editScores, setEditScores] = useState({ s1: '', s2: '' });
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
-        const matchesUrl = sessionId 
+        if (!isExpanded) return;
+
+        const matchesUrl = sessionId
             ? `/api/matches?sessionId=${sessionId}`
             : '/api/matches';
-        
+
         Promise.all([
             fetch(matchesUrl).then(res => res.json()),
             fetch('/api/players').then(res => res.json())
@@ -25,7 +27,7 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
             setMatches((mData as Match[]).sort((a, b) => b.timestamp - a.timestamp));
             setPlayers(pData);
         });
-    }, [refreshTrigger, sessionId]);
+    }, [isExpanded, refreshTrigger, sessionId]);
 
     const getNames = (ids: string[]) => {
         return ids.map(id => players.find(p => p.id === id)?.name || 'Unknown').join(' & ');
@@ -96,9 +98,9 @@ export default function MatchHistory({ refreshTrigger, onUpdate, sessionId }: { 
             >
                 <div className="flex items-center gap-2 text-blue-600">
                     <Clock className="w-5 h-5" />
-                    <h2 className="font-bold text-lg text-gray-800">Match History ({finishedMatches.length})</h2>
+                    <h2 className="font-bold text-lg text-gray-800">Match History {finishedMatches.length > 0 ? `(${finishedMatches.length})` : ''}</h2>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 md:hidden">
+                <button className="text-gray-400 hover:text-gray-600">
                     {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
