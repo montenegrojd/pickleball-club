@@ -27,7 +27,7 @@ function getValue(p: Player, key: SortKey, C = 0, globalMeanWr = 0): number | st
 
 export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: { refreshTrigger?: number, sessionId?: string, showAllTime?: boolean }) {
     const [players, setPlayers] = useState<Player[]>([]);
-    const [sortKey, setSortKey] = useState<SortKey>('w');
+    const [sortKey, setSortKey] = useState<SortKey>(showAllTime ? 'bayes' : 'w');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
     useEffect(() => {
