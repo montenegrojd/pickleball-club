@@ -12,15 +12,24 @@ export async function GET(request: Request) {
 
     const players = await db.getPlayers();
     let matches: Match[];
+    let recentSessionCount = 0;
 
     if (sessionId) {
-        // Get matches for specific session
         matches = await db.getMatchesBySessionId(sessionId);
     } else if (showAllTime) {
-        // Get all matches for hall of fame
         matches = await db.getMatches();
+    } else if (searchParams.get('range') === 'recent') {
+        // Last 3 closed sessions
+        const allSessions = await db.getSessions();
+        const recentSessions = allSessions
+            .filter(s => s.isClosed)
+            .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+            .slice(0, 3);
+        recentSessionCount = recentSessions.length;
+        const sessionIds = new Set(recentSessions.map(s => s.id));
+        const allMatches = await db.getMatches();
+        matches = allMatches.filter(m => sessionIds.has(m.sessionId ?? ''));
     } else {
-        // Get matches for active session (default)
         const activeSession = await db.getActiveSession();
         if (activeSession) {
             matches = await db.getMatchesBySessionId(activeSession.id);
@@ -71,6 +80,10 @@ export async function GET(request: Request) {
     if (sessionId) {
         // Show all players who participated in matches during this session
         results = results.filter(p => p.matchesPlayed > 0);
+    }
+
+    if (searchParams.get('range') === 'recent') {
+        return NextResponse.json({ players: results, sessionCount: recentSessionCount });
     }
 
     return NextResponse.json(results);

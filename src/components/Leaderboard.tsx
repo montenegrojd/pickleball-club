@@ -25,10 +25,38 @@ function getValue(p: Player, key: SortKey, C = 0, globalMeanWr = 0): number | st
     }
 }
 
+function SessionRankingInfo() {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+            <button
+                onClick={() => setOpen(o => !o)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+                <Info className="w-3.5 h-3.5" />
+                <span>How is the ranking determined?</span>
+                {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            {open && (
+                <div className="mt-3 text-sm text-gray-600 space-y-2">
+                    <p>Players are ranked by three criteria in order of priority:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-1">
+                        <li><span className="font-semibold text-blue-600">Win %</span> — primary. Who won the most of the games they played.</li>
+                        <li><span className="font-semibold text-gray-700">Games played</span> — first tie-break. More games played wins the tie, rewarding participation.</li>
+                        <li><span className="font-semibold text-purple-600">Pts/G</span> — second tie-break. Higher points per game reflects stronger winning margins.</li>
+                    </ol>
+                    <p className="text-gray-400 italic text-xs">Example: a player who went 8-2 ranks above one who went 3-0, because they proved consistency over more games.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: { refreshTrigger?: number, sessionId?: string, showAllTime?: boolean }) {
     const [players, setPlayers] = useState<Player[]>([]);
-    const [sortKey, setSortKey] = useState<SortKey>(showAllTime ? 'bayes' : 'w');
+    const [sortKey, setSortKey] = useState<SortKey>(showAllTime ? 'bayes' : 'wpct');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [minGames, setMinGames] = useState(showAllTime ? 30 : 0);
 
     useEffect(() => {
         const url = sessionId
@@ -39,6 +67,8 @@ export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: 
             .then(res => res.json())
             .then(data => setPlayers(data as Player[]));
     }, [refreshTrigger, sessionId, showAllTime]);
+
+    const qualified = minGames > 0 ? players.filter(p => p.matchesPlayed >= minGames) : players;
 
     const totalGames = players.reduce((s, p) => s + p.matchesPlayed, 0);
     const totalWins  = players.reduce((s, p) => s + p.matchesWon, 0);
@@ -54,11 +84,21 @@ export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: 
         }
     };
 
-    const sorted = [...players].sort((a, b) => {
+    const sorted = [...qualified].sort((a, b) => {
         const av = getValue(a, sortKey, C, globalMeanWr);
         const bv = getValue(b, sortKey, C, globalMeanWr);
         const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number);
-        return sortDir === 'desc' ? -cmp : cmp;
+        if (cmp !== 0) return sortDir === 'desc' ? -cmp : cmp;
+        // Session leaderboard tie-breaks: W% → G → Pts/G
+        if (!showAllTime && sortKey !== 'wpct') return 0;
+        if (!showAllTime) {
+            const gDiff = b.matchesPlayed - a.matchesPlayed;
+            if (gDiff !== 0) return gDiff;
+            const ptsgA = a.matchesPlayed > 0 ? (a.pointsScored || 0) / a.matchesPlayed : 0;
+            const ptsgB = b.matchesPlayed > 0 ? (b.pointsScored || 0) / b.matchesPlayed : 0;
+            return ptsgB - ptsgA;
+        }
+        return 0;
     });
 
     const SortIcon = ({ col }: { col: SortKey }) => {
@@ -79,9 +119,23 @@ export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: 
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-2 mb-4 text-amber-500">
-                <Trophy className="w-5 h-5" />
-                <h2 className="font-bold text-lg text-gray-800">{showAllTime ? 'Hall of Fame' : 'Leaderboard'}</h2>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-amber-500">
+                    <Trophy className="w-5 h-5" />
+                    <h2 className="font-bold text-lg text-gray-800">{showAllTime ? 'Hall of Fame' : 'Leaderboard'}</h2>
+                </div>
+                {showAllTime && (
+                    <button
+                        onClick={() => setMinGames(g => g === 0 ? 30 : 0)}
+                        className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                            minGames === 30
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                                : 'bg-gray-50 border-gray-300 text-gray-500'
+                        }`}
+                    >
+                        {minGames === 30 ? '30+ games' : 'All players'}
+                    </button>
+                )}
             </div>
 
             <div className="overflow-x-auto">
@@ -91,12 +145,25 @@ export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: 
                             <th className="px-3 py-2 rounded-l-lg">#</th>
                             <Th col="name" label="Player" />
                             {showAllTime && <Th col="bayes" label="Bayesian" className="text-center" />}
-                            <Th col="w"    label="W"    className="text-center" />
-                            <Th col="l"    label="L"    className="text-center" />
-                            <Th col="wpct" label="W%"   className="text-center" />
-                            <Th col="pts"  label="Pts"  className="text-center" />
-                            <Th col="ptsg" label="Pts/G" className="text-center" />
-                            <Th col="g"    label="G"    className="text-center rounded-r-lg" />
+                            {showAllTime ? (
+                                <>
+                                    <Th col="w"    label="W"     className="text-center" />
+                                    <Th col="l"    label="L"     className="text-center" />
+                                    <Th col="wpct" label="W%"    className="text-center" />
+                                    <Th col="pts"  label="Pts"   className="text-center" />
+                                    <Th col="ptsg" label="Pts/G" className="text-center" />
+                                    <Th col="g"    label="G"     className="text-center rounded-r-lg" />
+                                </>
+                            ) : (
+                                <>
+                                    <Th col="wpct" label="W%"    className="text-center" />
+                                    <Th col="w"    label="W"     className="text-center" />
+                                    <Th col="l"    label="L"     className="text-center" />
+                                    <Th col="g"    label="G"     className="text-center" />
+                                    <Th col="pts"  label="Pts"   className="text-center" />
+                                    <Th col="ptsg" label="Pts/G" className="text-center rounded-r-lg" />
+                                </>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -112,23 +179,42 @@ export default function Leaderboard({ refreshTrigger, sessionId, showAllTime }: 
                                             {(bayesianWinRate(p, C, globalMeanWr) * 100).toFixed(1)}%
                                         </td>
                                     )}
-                                    <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.matchesWon}</td>
-                                    <td className="px-3 py-2 text-center text-red-400">{p.matchesPlayed - p.matchesWon}</td>
-                                    <td className="px-3 py-2 text-center font-semibold text-blue-600">{winPct}%</td>
-                                    <td className="px-3 py-2 text-center text-gray-600">{p.pointsScored || 0}</td>
-                                    <td className="px-3 py-2 text-center text-purple-600">{ptsPerGame}</td>
-                                    <td className="px-3 py-2 text-center text-gray-400">{p.matchesPlayed}</td>
+                                    {showAllTime ? (
+                                        <>
+                                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.matchesWon}</td>
+                                            <td className="px-3 py-2 text-center text-red-400">{p.matchesPlayed - p.matchesWon}</td>
+                                            <td className="px-3 py-2 text-center font-semibold text-blue-600">{winPct}%</td>
+                                            <td className="px-3 py-2 text-center text-gray-600">{p.pointsScored || 0}</td>
+                                            <td className="px-3 py-2 text-center text-purple-600">{ptsPerGame}</td>
+                                            <td className="px-3 py-2 text-center text-gray-400">{p.matchesPlayed}</td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="px-3 py-2 text-center font-semibold text-blue-600">{winPct}%</td>
+                                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.matchesWon}</td>
+                                            <td className="px-3 py-2 text-center text-red-400">{p.matchesPlayed - p.matchesWon}</td>
+                                            <td className="px-3 py-2 text-center text-gray-400">{p.matchesPlayed}</td>
+                                            <td className="px-3 py-2 text-center text-gray-600">{p.pointsScored || 0}</td>
+                                            <td className="px-3 py-2 text-center text-purple-600">{ptsPerGame}</td>
+                                        </>
+                                    )}
                                 </tr>
                             );
                         })}
-                        {players.length === 0 && (
+                        {sorted.length === 0 && (
                             <tr>
-                                <td colSpan={showAllTime ? 9 : 8} className="px-3 py-4 text-center text-gray-400">No players checked in</td>
+                                <td colSpan={showAllTime ? 9 : 8} className="px-3 py-4 text-center text-gray-400">
+                                    {players.length > 0 ? 'No players with 30+ games yet.' : 'No players checked in'}
+                                </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {!showAllTime && players.length > 0 && (
+                <SessionRankingInfo />
+            )}
 
             {showAllTime && players.length > 0 && (
                 <div className="mt-5 pt-5 border-t border-gray-100 text-sm text-gray-600">
