@@ -3,9 +3,9 @@
 import { Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
-export default function MatchmakingRules() {
+export default function MatchmakingRules({ defaultExpanded = false }: { defaultExpanded?: boolean }) {
     const [selectedMode, setSelectedMode] = useState<'rotation' | 'playoff'>('rotation');
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
