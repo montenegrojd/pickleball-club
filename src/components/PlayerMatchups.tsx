@@ -26,7 +26,7 @@ const bump = (matrix: Matrix, a: string, b: string, win: boolean) => {
 
 // Sequential emerald ramp — light to dark as the count increases.
 const heatClass = (count: number, max: number): string => {
-    if (count === 0) return 'bg-gray-50 text-gray-300';
+    if (count === 0) return 'bg-orange-100 text-orange-400';
     const ratio = max > 0 ? count / max : 0;
     if (ratio > 0.8) return 'bg-emerald-600 text-white';
     if (ratio > 0.6) return 'bg-emerald-500 text-white';
@@ -113,6 +113,8 @@ function MatrixTable({
                 </table>
             </div>
             <div className="mt-2 flex items-center gap-1.5 text-[10px] text-gray-400">
+                <span className="w-3 h-3 rounded-sm bg-orange-100 border border-orange-200" />
+                <span className="mr-1">Never</span>
                 <span>Fewer</span>
                 <span className="w-3 h-3 rounded-sm bg-emerald-100" />
                 <span className="w-3 h-3 rounded-sm bg-emerald-300" />
