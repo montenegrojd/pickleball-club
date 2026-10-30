@@ -101,10 +101,11 @@ export default function SimulatorPage() {
         const fetchSessions = async () => {
             const response = await fetch('/api/sessions');
             if (!response.ok) return;
-            const data: SessionSummary[] = await response.json();
-            setSessions(data.sessions ?? data);
-            if (data.length > 0) {
-                setSelectedSessionId(data[0].id);
+            const data = await response.json();
+            const sessionList: SessionSummary[] = data.sessions ?? data;
+            setSessions(sessionList);
+            if (sessionList.length > 0) {
+                setSelectedSessionId(sessionList[0].id);
             }
         };
 
