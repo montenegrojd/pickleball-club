@@ -10,9 +10,12 @@ interface SimulationPlayer extends Player {
     skill: number; // Win probability (0.0 to 1.0)
 }
 
+type SimulationMode = 'best' | 'rotation' | 'playoff';
+
 interface SimulationConfig {
     playerCount: number;
     matchCount: number;
+    mode: SimulationMode;
 }
 
 interface MatchAnalytics {
@@ -83,7 +86,8 @@ interface SimulationResult {
 export default function SimulatorPage() {
     const [config, setConfig] = useState<SimulationConfig>({
         playerCount: 8,
-        matchCount: 20
+        matchCount: 20,
+        mode: 'best'
     });
     
     const [isRunning, setIsRunning] = useState(false);
@@ -98,7 +102,7 @@ export default function SimulatorPage() {
             const response = await fetch('/api/sessions');
             if (!response.ok) return;
             const data: SessionSummary[] = await response.json();
-            setSessions(data);
+            setSessions(data.sessions ?? data);
             if (data.length > 0) {
                 setSelectedSessionId(data[0].id);
             }
@@ -156,7 +160,9 @@ export default function SimulatorPage() {
 
         for (let i = 0; i < config.matchCount; i++) {
             const availablePlayers = players.map(p => p.id);
-            const proposal = Matchmaker.proposeMatch(availablePlayers, matches, playerMap);
+            const proposal = config.mode === 'best'
+                ? Matchmaker.proposeBestMatch(availablePlayers, matches, playerMap)
+                : Matchmaker.proposeMatch(availablePlayers, matches, playerMap);
 
             if (!proposal) {
                 console.warn(`Could not generate match ${i + 1}`);
@@ -693,7 +699,7 @@ export default function SimulatorPage() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Configuration</h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Player Count */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -722,6 +728,21 @@ export default function SimulatorPage() {
                                 onChange={(e) => setConfig({ ...config, matchCount: parseInt(e.target.value) })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
+                        </div>
+
+                        {/* Mode */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Matchmaking Mode
+                            </label>
+                            <select
+                                value={config.mode}
+                                onChange={(e) => setConfig({ ...config, mode: e.target.value as SimulationMode })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            >
+                                <option value="best">Best Match</option>
+                                <option value="rotation">Rotation</option>
+                            </select>
                         </div>
                     </div>
 

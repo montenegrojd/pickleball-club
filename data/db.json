@@ -1055,7 +1055,12 @@
     {
       "id": "b88bb382-086e-4a19-bb07-deaf33931b01",
       "startDate": "9/26/2026, 8:00:25 PM",
-      "playerIds": [],
+      "playerIds": [
+        "player-9",
+        "player-2",
+        "player-8",
+        "player-4"
+      ],
       "isActive": true,
       "isClosed": false
     }
