@@ -31,6 +31,11 @@ export class Matchmaker {
     private static readonly UNUSED_PARTNERSHIP_BONUS = 150;
     private static readonly BOTH_TEAMS_UNUSED_BONUS = 300; // Extra bonus when both teams are fresh
 
+    // Best Match weights: a match creates 2 partner pairs but 4 opponent pairs,
+    // so partner repeats weigh double to keep both matrices on the same scale
+    private static readonly BEST_MATCH_PARTNER_WEIGHT = 2;
+    private static readonly BEST_MATCH_OPPONENT_WEIGHT = 1;
+
     /**
      * Helper: Normalize team pairing to consistent string for comparison
      * Always sorts player IDs so [p1, p2] and [p2, p1] are treated as same team
@@ -523,6 +528,183 @@ export class Matchmaker {
             mainReason: "Strict queue: longest-waiting players selected.",
             scoringBreakdown: reasonData.breakdown,
             analytics
+        };
+    }
+
+    /**
+     * Helper: Count how many times each pair of players has been teammates and opponents.
+     * Includes matches still in progress, so a match on another court is taken into account.
+     */
+    private static buildMatchupCounts(history: Match[]): { partners: Map<string, number>, opponents: Map<string, number> } {
+        const partners = new Map<string, number>();
+        const opponents = new Map<string, number>();
+        const bump = (counts: Map<string, number>, a: string, b: string) => {
+            const key = this.normalizeTeam(a, b);
+            counts.set(key, (counts.get(key) || 0) + 1);
+        };
+
+        history.forEach(match => {
+            if (match.team1.length === 2) bump(partners, match.team1[0], match.team1[1]);
+            if (match.team2.length === 2) bump(partners, match.team2[0], match.team2[1]);
+            match.team1.forEach(a => match.team2.forEach(b => bump(opponents, a, b)));
+        });
+
+        return { partners, opponents };
+    }
+
+    /**
+     * Helper: Identify players who played their last 2 matches back-to-back and would
+     * now play a third without rest. Works with multiple courts: a new match on a court
+     * means the previous match there finished, so a player rested if a match started
+     * on the court they left without them.
+     */
+    private static identifyBackToBackPlayers(playerIds: string[], history: Match[]): Set<string> {
+        const fatigued = new Set<string>();
+        const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+        const courtOf = (match: Match) => match.courtNumber ?? 0;
+        const nextOnCourt = (match: Match) =>
+            sortedHistory.find(m => m.timestamp > match.timestamp && courtOf(m) === courtOf(match));
+
+        playerIds.forEach(id => {
+            const played = sortedHistory.filter(m => m.team1.includes(id) || m.team2.includes(id));
+            if (played.length < 2) return;
+            const previous = played[played.length - 2];
+            const last = played[played.length - 1];
+
+            // No match started on previous's court before last (no rest in between),
+            // and nothing has started on last's court since (no rest after)
+            const afterPrevious = nextOnCourt(previous);
+            const restedBetween = afterPrevious !== undefined && afterPrevious !== last && afterPrevious.timestamp < last.timestamp;
+            if (!restedBetween && !nextOnCourt(last)) {
+                fatigued.add(id);
+            }
+        });
+
+        return fatigued;
+    }
+
+    /**
+     * Helper: Games credited to late arrivals. When a player plays their first match,
+     * they are credited one game less than the player with the fewest games so far,
+     * so from then on they rotate like everyone else.
+     */
+    private static getLateArrivalCredits(history: Match[]): Map<string, number> {
+        const credits = new Map<string, number>();
+        const games = new Map<string, number>(); // Games played plus credit
+        const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+
+        sortedHistory.forEach(match => {
+            const matchPlayers = [...match.team1, ...match.team2];
+            const fewestGames = games.size > 0 ? Math.min(...games.values()) : 0;
+
+            matchPlayers.forEach(id => {
+                if (games.has(id)) return;
+                const credit = Math.max(0, fewestGames - 1);
+                credits.set(id, credit);
+                games.set(id, credit); // Credited games count for later arrivals too
+            });
+            matchPlayers.forEach(id => games.set(id, (games.get(id) ?? 0) + 1));
+        });
+
+        return credits;
+    }
+
+    /**
+     * Helper: Repetition cost of a configuration (lower is better).
+     * Each pairing adds 2*count+1 — the increase of that pairing's squared count —
+     * so pairings that already repeat a lot are penalized the most.
+     */
+    private static scoreRepetitionCost(
+        config: { team1: string[], team2: string[] },
+        counts: { partners: Map<string, number>, opponents: Map<string, number> }
+    ): { cost: number; partnerRepeats: number; opponentRepeats: number } {
+        const partnerCounts = [
+            counts.partners.get(this.normalizeTeam(config.team1[0], config.team1[1])) || 0,
+            counts.partners.get(this.normalizeTeam(config.team2[0], config.team2[1])) || 0,
+        ];
+        const opponentCounts = config.team1.flatMap(a =>
+            config.team2.map(b => counts.opponents.get(this.normalizeTeam(a, b)) || 0)
+        );
+
+        const pairCost = (values: number[]) => values.reduce((sum, c) => sum + 2 * c + 1, 0);
+        const sum = (values: number[]) => values.reduce((total, c) => total + c, 0);
+
+        return {
+            cost: this.BEST_MATCH_PARTNER_WEIGHT * pairCost(partnerCounts) +
+                this.BEST_MATCH_OPPONENT_WEIGHT * pairCost(opponentCounts),
+            partnerRepeats: sum(partnerCounts),
+            opponentRepeats: sum(opponentCounts),
+        };
+    }
+
+    /**
+     * Best Match matchmaking algorithm
+     * Keeps court time fair (rested players first, fewest games played), then picks the
+     * 4 players and team split that least repeat previous teammate and opponent pairings.
+     * Works one court at a time: players in active matches are excluded by the caller,
+     * and those active matches still count as history.
+     */
+    static proposeBestMatch(
+        availablePlayerIds: string[],
+        history: Match[],
+        playerNames?: Map<string, string>
+    ): MatchProposal | null {
+        if (availablePlayerIds.length < 4) return null;
+
+        const fatigued = this.identifyBackToBackPlayers(availablePlayerIds, history);
+        const playerStats = this.calculatePlayerStats(availablePlayerIds, history);
+        const historicalTeams = this.getHistoricalTeams(history);
+        const counts = this.buildMatchupCounts(history);
+
+        // 1. Who plays: as few fatigued players as possible, then keep only the
+        //    combinations with the fewest games played so nobody is left on the bench
+        const allCombinations = this.generateAllPlayerCombinations(availablePlayerIds);
+        const fatigueOf = (combo: string[]) => combo.filter(id => fatigued.has(id)).length;
+        const minFatigue = Math.min(...allCombinations.map(fatigueOf));
+        const candidatesByFatigue = allCombinations.filter(combo => fatigueOf(combo) === minFatigue);
+
+        // Late arrivals are credited the games they missed (see getLateArrivalCredits),
+        // so they get priority for one match instead of playing every match to catch up
+        const credits = this.getLateArrivalCredits(history);
+        const effectiveGames = (id: string) => (playerStats.get(id)?.gamesPlayed ?? 0) + (credits.get(id) ?? 0);
+        const gamesOf = (combo: string[]) => combo.reduce((sum, id) => sum + effectiveGames(id), 0);
+        const minGames = Math.min(...candidatesByFatigue.map(gamesOf));
+        const candidates = candidatesByFatigue.filter(combo => gamesOf(combo) === minGames);
+
+        // 2. Score every team split of every candidate by repetition cost
+        //    Ties go to the players who have waited longest
+        const waitOf = (combo: string[]) =>
+            combo.reduce((sum, id) => sum + Math.min(playerStats.get(id)?.lastPlayedIndex ?? 0, history.length), 0);
+
+        const scoredConfigs = candidates.flatMap(combo => {
+            const wait = waitOf(combo);
+            return this.generateAllConfigurations(combo).map(config => ({
+                config,
+                wait,
+                ...this.scoreRepetitionCost(config, counts),
+            }));
+        });
+        scoredConfigs.sort((a, b) => a.cost - b.cost || b.wait - a.wait);
+
+        const best = scoredConfigs[0];
+        const selectedPlayers = [...best.config.team1, ...best.config.team2];
+
+        // 3. Explain the choice
+        const getName = (id: string) => playerNames?.get(id) || id;
+        const mainReason = best.partnerRepeats === 0 && best.opponentRepeats === 0
+            ? "Best match: all-new teammates and opponents."
+            : `Best match: least repeated pairings (${best.partnerRepeats} previous as teammates, ${best.opponentRepeats} as opponents).`;
+        const breakdown = scoredConfigs.slice(0, 3).map(({ config, cost, partnerRepeats, opponentRepeats }) =>
+            `[${config.team1.map(getName).join(",")}] vs [${config.team2.map(getName).join(",")}]: cost ${cost} (teammates ${partnerRepeats}, opponents ${opponentRepeats})`
+        );
+
+        return {
+            team1: best.config.team1,
+            team2: best.config.team2,
+            reason: `${mainReason} Lowest costs: ${breakdown.join(" | ")}`,
+            mainReason,
+            scoringBreakdown: breakdown,
+            analytics: this.generateAnalytics(history, best.config, selectedPlayers, historicalTeams, fatigued)
         };
     }
 

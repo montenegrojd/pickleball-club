@@ -4,7 +4,7 @@ import { Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MatchmakingRules({ defaultExpanded = false }: { defaultExpanded?: boolean }) {
-    const [selectedMode, setSelectedMode] = useState<'rotation' | 'playoff'>('rotation');
+    const [selectedMode, setSelectedMode] = useState<'rotation' | 'best' | 'playoff'>('rotation');
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
     return (
@@ -35,6 +35,16 @@ export default function MatchmakingRules({ defaultExpanded = false }: { defaultE
                             }`}
                         >
                             Rotation
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedMode('best'); }}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                                selectedMode === 'best'
+                                    ? 'border-emerald-600 text-emerald-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            Best Match
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); setSelectedMode('playoff'); }}
@@ -123,6 +133,33 @@ export default function MatchmakingRules({ defaultExpanded = false }: { defaultE
                                         <span className="font-mono text-sm font-bold text-red-600">-300</span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Best Match Mode */}
+                    {selectedMode === 'best' && (
+                        <div className="text-sm text-gray-600 space-y-2">
+                            <p className="text-gray-700 font-medium mb-3">Balances the Player Matchups grids so nobody keeps playing with, or against, the same people.</p>
+                            <div className="flex gap-2">
+                                <span className="font-semibold min-w-[20px] text-gray-500">1.</span>
+                                <span><strong className="text-gray-800">Fair Court Time:</strong> Players who played their last 2 matches back-to-back rest when possible (on any court), and only the players with the fewest games are considered. Late arrivals count as one game less than the player with the fewest, so they play next without having to catch up</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold min-w-[20px] text-gray-500">2.</span>
+                                <span><strong className="text-gray-800">Every Option Scored:</strong> Each possible group of 4 and team split gets a repetition cost from how often those pairs have already been teammates or opponents</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold min-w-[20px] text-gray-500">3.</span>
+                                <span><strong className="text-gray-800">Big Repeats Cost More:</strong> A pair adds 2 × times + 1, so a pair that met 7 times costs 15 while a new pair costs 1. Teammate pairs count double</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold min-w-[20px] text-gray-500">4.</span>
+                                <span><strong className="text-gray-800">Lowest Cost Wins:</strong> Ties go to the players who have waited longest</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold min-w-[20px] text-gray-500">5.</span>
+                                <span><strong className="text-gray-800">Multiple Courts:</strong> Generate one court at a time — matches in progress on other courts already count, so the next court avoids repeating them</span>
                             </div>
                         </div>
                     )}
