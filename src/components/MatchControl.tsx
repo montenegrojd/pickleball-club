@@ -3,7 +3,38 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Match, Player } from '@/lib/types';
-import { Play, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import type { DuprResult } from '@/lib/dupr';
+import { Play, ChevronDown, ChevronUp, Info, X } from 'lucide-react';
+
+interface DuprInfo {
+    rating: number;
+    rank: number | null; // position in the active ranking; null if inactive
+}
+
+interface RatingMove {
+    playerId: string;
+    name: string;
+    team: 1 | 2;
+    before: DuprInfo | null;
+    after: DuprInfo | null;
+}
+
+interface RatingSummary {
+    team1: string[];
+    team2: string[];
+    score1: number;
+    score2: number;
+    moves: RatingMove[];
+}
+
+const START_RATING = 3.0;
+
+function toDuprMap(d: DuprResult): Record<string, DuprInfo> {
+    const map: Record<string, DuprInfo> = {};
+    d.rows.forEach((r, i) => { map[r.playerId] = { rating: r.rating, rank: i + 1 }; });
+    d.inactive.forEach(r => { map[r.playerId] = { rating: r.rating, rank: null }; });
+    return map;
+}
 
 interface MatchAnalytics {
     hadFatiguedPlayers: string[];
@@ -38,6 +69,8 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
     const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
     const score1Refs = useRef<Record<string, HTMLInputElement | null>>({});
     const score2Refs = useRef<Record<string, HTMLInputElement | null>>({});
+    const [dupr, setDupr] = useState<Record<string, DuprInfo>>({});
+    const [ratingSummary, setRatingSummary] = useState<RatingSummary | null>(null);
 
     const hasDuplicatePendingPlayers = pendingProposal
         ? (() => {
@@ -46,14 +79,21 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         })()
         : false;
 
-    const fetchData = async () => {
-        const [mRes, pRes] = await Promise.all([
+    const fetchData = async (): Promise<{ players: Player[]; duprMap: Record<string, DuprInfo> }> => {
+        const [mRes, pRes, dRes] = await Promise.all([
             fetch('/api/matches'),
-            fetch('/api/players')
+            fetch('/api/players'),
+            fetch('/api/dupr').catch(() => null)
         ]);
         const matches: Match[] = await mRes.json();
         const players: Player[] = await pRes.json();
         setAllPlayers(players);
+
+        let duprMap: Record<string, DuprInfo> = {};
+        if (dRes && dRes.ok) {
+            duprMap = toDuprMap(await dRes.json());
+            setDupr(duprMap);
+        }
 
         // Filter for active matches
         // Sort by court number or timestamp
@@ -70,6 +110,8 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             });
             return next;
         });
+
+        return { players, duprMap };
     };
 
     useEffect(() => {
@@ -231,6 +273,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         }
 
         setLoading(true);
+        const duprBefore = dupr;
         await fetch('/api/matches', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -263,7 +306,18 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             setPendingProposal(null);
         }
 
-        await fetchData();
+        const { players, duprMap: duprAfter } = await fetchData();
+        const nameOf = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
+        setRatingSummary({
+            team1: match.team1,
+            team2: match.team2,
+            score1: s1,
+            score2: s2,
+            moves: [
+                ...match.team1.map(id => ({ playerId: id, name: nameOf(id), team: 1 as const, before: duprBefore[id] ?? null, after: duprAfter[id] ?? null })),
+                ...match.team2.map(id => ({ playerId: id, name: nameOf(id), team: 2 as const, before: duprBefore[id] ?? null, after: duprAfter[id] ?? null })),
+            ],
+        });
         onUpdate();
         setLoading(false);
     };
@@ -321,9 +375,18 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
         }
     }
 
-    const getNames = (ids: string[]) => {
-        return ids.map(id => allPlayers.find(p => p.id === id)?.name || 'Unknown').join(' & ');
+    const ratingOf = (id: string) => dupr[id]?.rating ?? START_RATING;
+
+    const nameWithDupr = (id: string) => {
+        const name = allPlayers.find(p => p.id === id)?.name || 'Unknown';
+        return `${name} (${ratingOf(id).toFixed(3)})`;
     };
+
+    const getNames = (ids: string[]) => {
+        return ids.map(nameWithDupr).join(' & ');
+    };
+
+    const teamAvg = (ids: string[]) => ids.filter(Boolean).reduce((acc, id) => acc + ratingOf(id), 0) / Math.max(1, ids.filter(Boolean).length);
 
     return (
         <>
@@ -359,7 +422,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                     <div className="mt-4 border-t pt-4 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-2">Team 1</h3>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2 flex justify-between"><span>Team 1</span><span className="font-normal text-gray-500">DUPR prom. {teamAvg(pendingProposal.team1).toFixed(3)}</span></h3>
                                 <div className="space-y-2">
                                     {[0, 1].map(index => (
                                         <select
@@ -370,7 +433,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                         >
                                             {pendingProposal.availablePlayerIds.map(playerId => (
                                                 <option key={playerId} value={playerId}>
-                                                    {allPlayers.find(player => player.id === playerId)?.name || 'Unknown'}
+                                                    {nameWithDupr(playerId)}
                                                 </option>
                                             ))}
                                         </select>
@@ -379,7 +442,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                             </div>
 
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-2">Team 2</h3>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2 flex justify-between"><span>Team 2</span><span className="font-normal text-gray-500">DUPR prom. {teamAvg(pendingProposal.team2).toFixed(3)}</span></h3>
                                 <div className="space-y-2">
                                     {[0, 1].map(index => (
                                         <select
@@ -390,7 +453,7 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
                                         >
                                             {pendingProposal.availablePlayerIds.map(playerId => (
                                                 <option key={playerId} value={playerId}>
-                                                    {allPlayers.find(player => player.id === playerId)?.name || 'Unknown'}
+                                                    {nameWithDupr(playerId)}
                                                 </option>
                                             ))}
                                         </select>
@@ -496,6 +559,10 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
                 <h2 className="font-bold text-xl text-gray-800 mb-6">Active Courts</h2>
 
+                {ratingSummary && (
+                    <RatingSummaryCard summary={ratingSummary} onClose={() => setRatingSummary(null)} />
+                )}
+
                 {activeMatches.length === 0 ? (
                     <div className="text-center py-8 text-gray-400 italic">
                         No matches in progress
@@ -572,5 +639,74 @@ export default function MatchControl({ onUpdate, refreshTrigger, sessionId }: Ma
             )}
         </div>
         </>
+    );
+}
+
+
+function RatingSummaryCard({ summary, onClose }: { summary: RatingSummary; onClose: () => void }) {
+    const winner = summary.score1 > summary.score2 ? 1 : 2;
+    const teamNames = (t: 1 | 2) => summary.moves.filter(m => m.team === t).map(m => m.name).join(' & ');
+
+    return (
+        <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 p-4">
+            <div className="mb-3 flex items-start justify-between gap-2">
+                <div>
+                    <h3 className="font-bold text-teal-900">Movimientos DUPR-alt</h3>
+                    <p className="text-sm text-teal-800">
+                        <span className={winner === 1 ? 'font-semibold' : ''}>{teamNames(1)}</span>
+                        {' '}{summary.score1}–{summary.score2}{' '}
+                        <span className={winner === 2 ? 'font-semibold' : ''}>{teamNames(2)}</span>
+                    </p>
+                </div>
+                <button onClick={onClose} className="rounded p-1 text-teal-700 hover:bg-teal-100" aria-label="Cerrar resumen">
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+            <table className="w-full text-sm tabular-nums">
+                <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-teal-700">
+                        <th className="pb-1 font-medium">Jugador</th>
+                        <th className="pb-1 text-right font-medium">Rating</th>
+                        <th className="pb-1 text-right font-medium">Δ</th>
+                        <th className="pb-1 text-right font-medium">Puesto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {summary.moves.map(m => {
+                        const before = m.before?.rating ?? START_RATING;
+                        const after = m.after?.rating ?? before;
+                        const delta = after - before;
+                        const rb = m.before?.rank ?? null;
+                        const ra = m.after?.rank ?? null;
+                        const rankDelta = rb !== null && ra !== null ? rb - ra : null;
+                        return (
+                            <tr key={m.playerId} className="border-t border-teal-100">
+                                <td className="py-1.5 text-gray-900">
+                                    {m.name}
+                                    {m.team === winner && <span className="ml-1 text-xs text-teal-600">W</span>}
+                                </td>
+                                <td className="py-1.5 text-right text-gray-700">
+                                    {before.toFixed(3)} → <span className="font-semibold text-gray-900">{after.toFixed(3)}</span>
+                                </td>
+                                <td className={`py-1.5 text-right font-semibold ${delta > 0 ? 'text-emerald-700' : delta < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                                    {delta > 0 ? '+' : ''}{delta.toFixed(3)}
+                                </td>
+                                <td className="py-1.5 text-right text-gray-700">
+                                    {ra === null ? '—' : (
+                                        <>
+                                            #{ra}
+                                            {rankDelta === null ? (rb === null ? <span className="ml-1 text-xs text-teal-600">nuevo</span> : null)
+                                                : rankDelta > 0 ? <span className="ml-1 text-xs text-emerald-700">▲{rankDelta}</span>
+                                                : rankDelta < 0 ? <span className="ml-1 text-xs text-red-600">▼{-rankDelta}</span>
+                                                : <span className="ml-1 text-xs text-gray-400">=</span>}
+                                        </>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
     );
 }
