@@ -20,8 +20,9 @@ export async function GET(request: Request) {
 
     // Get the proper host from headers (works with proxies and different hosts)
     const host = request.headers.get('host') || 'localhost:8080';
-    const protocol = request.headers.get('x-forwarded-proto') || 
-                     (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+    // Behind cloudflared/Cloud Run x-forwarded-proto is "https"; on a plain LAN request fall back to the request's own scheme.
+    const protocol = request.headers.get('x-forwarded-proto') ||
+                     new URL(request.url).protocol.replace(':', '');
     
     // Create response with redirect using proper host
     const redirectUrl = `${protocol}://${host}/`;
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     const cookieValue = process.env.AUTH_COOKIE_VALUE || 'authenticated';
     response.cookies.set('pickleball-auth', cookieValue, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: protocol === 'https', // allow plain-http LAN testing; https behind cloudflared
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
         path: '/',
