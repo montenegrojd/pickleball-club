@@ -6,6 +6,7 @@ import PlayerInsights from '@/components/PlayerInsights';
 import SessionStats from '@/components/SessionStats';
 import PlayerMatchups from '@/components/PlayerMatchups';
 import SessionHeader from '@/components/SessionHeader';
+import SessionDuprMovement from '@/components/SessionDuprMovement';
 import { RosterSession } from '@/lib/types';
 
 export default function SessionStatsPage() {
@@ -33,6 +34,7 @@ export default function SessionStatsPage() {
       {/* Main content */}
       <main className="min-h-screen bg-gray-50 p-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
         <div className="max-w-4xl mx-auto space-y-6">
+          <SessionDuprMovement refreshTrigger={refreshTrigger} sessionId={sessionId} />
           <PlayerInsights refreshTrigger={refreshTrigger} sessionId={sessionId} />
           <SessionStats refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded />
           <PlayerMatchups refreshTrigger={refreshTrigger} sessionId={sessionId} defaultExpanded />

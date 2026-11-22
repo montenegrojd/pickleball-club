@@ -99,13 +99,20 @@ export default function SessionManager() {
             <main className="min-h-screen bg-gray-50 p-4 md:p-8">
                 <div className="max-w-4xl mx-auto">
                     {/* Hall of Fame Link */}
-                    <div className="mb-6 text-left">
-                        <Link 
+                    <div className="mb-6 flex flex-wrap gap-4 text-left">
+                        <Link
                             href="/hall-of-fame"
                             className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg hover:from-yellow-600 hover:to-orange-600 transition-all transform hover:scale-105"
                         >
                             <Trophy className="w-6 h-6" />
                             Hall of Fame
+                            <ArrowRight className="w-5 h-5" />
+                        </Link>
+                        <Link
+                            href="/ranking"
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-cyan-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg hover:from-teal-700 hover:to-cyan-800 transition-all transform hover:scale-105"
+                        >
+                            Ranking DUPR-alt
                             <ArrowRight className="w-5 h-5" />
                         </Link>
                     </div>
